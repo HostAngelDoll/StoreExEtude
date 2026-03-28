@@ -1,0 +1,22 @@
+gradlew installDebug --debug
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+
+# 1. Descargar los datos del PR específico (el 1 en este caso)
+git fetch origin pull/1/head:revision-pr-1
+
+# 2. Cambiarte a esa rama para ver los cambios
+git checkout revision-pr-1
+
+# Regresa a tu rama principal
+git checkout main
+
+# Fusiona los cambios de la rama del PR
+git merge revision-pr-1
+
+
+git diff --name-only main
