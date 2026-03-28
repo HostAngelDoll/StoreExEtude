@@ -306,4 +306,5 @@
     <string name="video_notes_position_end">Derecha / Abajo</string>
     <string name="video_notes_size_landscape">Tamaño de notas (Horizontal)</string>
     <string name="video_notes_size_portrait">Tamaño de notas (Vertical)</string>
+    <string name="no_notes_found">No se encontraron notas</string>
 </resources>

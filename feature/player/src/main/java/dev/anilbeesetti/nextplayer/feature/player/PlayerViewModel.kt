@@ -19,6 +19,7 @@ import dev.anilbeesetti.nextplayer.feature.player.state.SubtitleOptionsEvent
 import dev.anilbeesetti.nextplayer.feature.player.state.VideoZoomEvent
 import javax.inject.Inject
 import java.io.File
+import androidx.documentfile.provider.DocumentFile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -60,6 +61,23 @@ class PlayerViewModel @Inject constructor(
         viewModelScope.launch {
             val notes = withContext(Dispatchers.IO) {
                 try {
+                    val extensions = listOf("txt", "md")
+
+                    // Try with DocumentFile for content:// or file://
+                    val doc = DocumentFile.fromSingleUri(context, uri)
+                    val parent = doc?.parentFile
+                    val baseName = doc?.name?.substringBeforeLast(".")
+
+                    if (parent != null && baseName != null) {
+                        for (ext in extensions) {
+                            val notesFile = parent.findFile("$baseName.$ext")
+                            if (notesFile?.exists() == true && notesFile.isFile) {
+                                return@withContext context.contentResolver.openInputStream(notesFile.uri)?.use { it.bufferedReader().readText() }
+                            }
+                        }
+                    }
+
+                    // Fallback to absolute path for file:// or MediaStore where DocumentFile parent might be null
                     val path = if (uri.scheme == "file") {
                         uri.path
                     } else {
@@ -69,20 +87,12 @@ class PlayerViewModel @Inject constructor(
                     if (path != null) {
                         val videoFile = File(path)
                         val videoNameWithoutExtension = videoFile.nameWithoutExtension
-                        val extensions = listOf("txt", "md")
                         for (ext in extensions) {
                             val notesFile = File(videoFile.parent, "$videoNameWithoutExtension.$ext")
                             if (notesFile.exists() && notesFile.isFile) {
                                 return@withContext notesFile.readText()
                             }
                         }
-                    } else if (uri.scheme == "content") {
-                        val fileName = context.getFilenameFromContentUri(uri)
-                            ?: uri.lastPathSegment ?: return@withContext null
-                        val videoNameWithoutExtension = fileName.substringBeforeLast(".")
-
-                        // Last ditch effort: if it's a media store URI, we might be able to query the parent
-                        // but getPath already tries that.
                     }
 
                     null
@@ -90,7 +100,7 @@ class PlayerViewModel @Inject constructor(
                     null
                 }
             }
-            internalUiState.update { it.copy(videoNotes = notes, showVideoNotesPanel = notes != null) }
+            internalUiState.update { it.copy(videoNotes = notes) }
         }
     }
 

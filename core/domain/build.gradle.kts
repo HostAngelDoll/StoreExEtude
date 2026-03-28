@@ -33,6 +33,7 @@ dependencies {
     implementation(project(":core:model"))
 
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.documentfile)
     implementation(libs.kotlinx.coroutines.android)
 
     // Hilt

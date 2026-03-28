@@ -309,4 +309,5 @@
     <string name="video_notes_position_end">Right / Bottom</string>
     <string name="video_notes_size_landscape">Video notes size (Landscape)</string>
     <string name="video_notes_size_portrait">Video notes size (Portrait)</string>
+    <string name="no_notes_found">No notes found</string>
 </resources>

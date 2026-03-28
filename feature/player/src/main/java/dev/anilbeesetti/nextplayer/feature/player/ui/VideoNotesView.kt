@@ -20,6 +20,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.ui.res.stringResource
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -67,12 +68,25 @@ fun VideoNotesView(
                     .verticalScroll(rememberScrollState()),
             ) {
                 Spacer(modifier = Modifier.height(48.dp)) // Reserve space for close button
-                Text(
-                    text = notes,
-                    color = Color.White,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(8.dp),
-                )
+                if (notes.isNotEmpty()) {
+                    Text(
+                        text = notes,
+                        color = Color.White,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(8.dp),
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = stringResource(id = R.string.no_notes_found),
+                            color = Color.White.copy(alpha = 0.6f),
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
+                }
                 Spacer(modifier = Modifier.height(screenHeight))
             }
 

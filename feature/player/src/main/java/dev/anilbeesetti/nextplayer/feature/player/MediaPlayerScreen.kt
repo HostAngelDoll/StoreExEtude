@@ -195,9 +195,9 @@ fun MediaPlayerScreen(
                     .fillMaxSize()
                     .background(Color.Black),
             ) {
-                if (uiState.showVideoNotesPanel && uiState.videoNotes != null && notesLayout == VideoNotesLayout.TOP) {
+                if (uiState.showVideoNotesPanel && notesLayout == VideoNotesLayout.TOP) {
                     VideoNotesView(
-                        notes = uiState.videoNotes!!,
+                        notes = uiState.videoNotes ?: "",
                         layout = VideoNotesLayout.TOP,
                         sizeFraction = videoNotesSize,
                         onSizeChange = {
@@ -212,9 +212,9 @@ fun MediaPlayerScreen(
                 }
 
                 Row(modifier = Modifier.weight(1f)) {
-                    if (uiState.showVideoNotesPanel && uiState.videoNotes != null && notesLayout == VideoNotesLayout.LEFT) {
+                    if (uiState.showVideoNotesPanel && notesLayout == VideoNotesLayout.LEFT) {
                         VideoNotesView(
-                            notes = uiState.videoNotes!!,
+                            notes = uiState.videoNotes ?: "",
                             layout = VideoNotesLayout.LEFT,
                             sizeFraction = videoNotesSize,
                             onSizeChange = {
@@ -296,9 +296,9 @@ fun MediaPlayerScreen(
                             }
                         }
                     }
-                    if (uiState.showVideoNotesPanel && uiState.videoNotes != null && notesLayout == VideoNotesLayout.RIGHT) {
+                    if (uiState.showVideoNotesPanel && notesLayout == VideoNotesLayout.RIGHT) {
                         VideoNotesView(
-                            notes = uiState.videoNotes!!,
+                            notes = uiState.videoNotes ?: "",
                             layout = VideoNotesLayout.RIGHT,
                             sizeFraction = videoNotesSize,
                             onSizeChange = {
@@ -313,9 +313,9 @@ fun MediaPlayerScreen(
                     }
                 }
 
-                if (uiState.showVideoNotesPanel && uiState.videoNotes != null && notesLayout == VideoNotesLayout.BOTTOM) {
+                if (uiState.showVideoNotesPanel && notesLayout == VideoNotesLayout.BOTTOM) {
                     VideoNotesView(
-                        notes = uiState.videoNotes!!,
+                        notes = uiState.videoNotes ?: "",
                         layout = VideoNotesLayout.BOTTOM,
                         sizeFraction = videoNotesSize,
                         onSizeChange = {
@@ -370,7 +370,7 @@ fun MediaPlayerScreen(
                                         controlsVisibilityState.hideControls()
                                         overlayView = OverlayView.PLAYLIST
                                     },
-                                    onNotesClick = if (uiState.videoNotes != null) {
+                                    onNotesClick = if (uiState.playerPreferences?.showVideoNotes == true) {
                                         {
                                             controlsVisibilityState.hideControls()
                                             viewModel.toggleVideoNotesPanel()
