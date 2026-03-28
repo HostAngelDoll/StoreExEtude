@@ -3,7 +3,6 @@ package dev.anilbeesetti.nextplayer.feature.player
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.annotation.OptIn
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
@@ -85,6 +84,7 @@ import dev.anilbeesetti.nextplayer.feature.player.ui.OverlayShowView
 import dev.anilbeesetti.nextplayer.feature.player.ui.OverlayView
 import dev.anilbeesetti.nextplayer.feature.player.ui.SubtitleConfiguration
 import dev.anilbeesetti.nextplayer.feature.player.ui.VerticalProgressView
+import dev.anilbeesetti.nextplayer.feature.player.ui.VideoNotesLayout
 import dev.anilbeesetti.nextplayer.feature.player.ui.VideoNotesView
 import dev.anilbeesetti.nextplayer.feature.player.ui.controls.ControlsBottomView
 import dev.anilbeesetti.nextplayer.feature.player.ui.controls.ControlsTopView
@@ -182,6 +182,11 @@ fun MediaPlayerScreen(
     val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
     val videoNotesSize = if (isLandscape) playerPreferences.videoNotesSizeLandscape else playerPreferences.videoNotesSizePortrait
 
+    val notesLayout = when (playerPreferences.videoNotesPosition) {
+        VideoNotesPosition.START -> if (isLandscape) VideoNotesLayout.LEFT else VideoNotesLayout.TOP
+        VideoNotesPosition.END -> if (isLandscape) VideoNotesLayout.RIGHT else VideoNotesLayout.BOTTOM
+    }
+
     CompositionLocalProvider(LocalControlsVisibilityState provides controlsVisibilityState) {
         Box {
             Column(
@@ -189,11 +194,27 @@ fun MediaPlayerScreen(
                     .fillMaxSize()
                     .background(Color.Black),
             ) {
+                if (uiState.showVideoNotesPanel && uiState.videoNotes != null && notesLayout == VideoNotesLayout.TOP) {
+                    VideoNotesView(
+                        notes = uiState.videoNotes!!,
+                        layout = VideoNotesLayout.TOP,
+                        sizeFraction = videoNotesSize,
+                        onSizeChange = {
+                            if (isLandscape) {
+                                viewModel.preferencesRepositoryScopeUpdateLandscapeSize(it)
+                            } else {
+                                viewModel.preferencesRepositoryScopeUpdatePortraitSize(it)
+                            }
+                        },
+                        onCloseClick = { viewModel.toggleVideoNotesPanel() },
+                    )
+                }
+
                 Row(modifier = Modifier.weight(1f)) {
-                    if (uiState.showVideoNotesPanel && uiState.videoNotes != null && playerPreferences.videoNotesPosition == VideoNotesPosition.LEFT) {
+                    if (uiState.showVideoNotesPanel && uiState.videoNotes != null && notesLayout == VideoNotesLayout.LEFT) {
                         VideoNotesView(
                             notes = uiState.videoNotes!!,
-                            position = VideoNotesPosition.LEFT,
+                            layout = VideoNotesLayout.LEFT,
                             sizeFraction = videoNotesSize,
                             onSizeChange = {
                                 if (isLandscape) {
@@ -227,8 +248,8 @@ fun MediaPlayerScreen(
                         Box(modifier = Modifier.fillMaxSize()) {
                             androidx.compose.animation.AnimatedVisibility(
                                 visible = controlsVisibilityState.controlsVisible,
-                                enter = fadeIn(),
-                                exit = fadeOut(),
+                                enter = androidx.compose.animation.fadeIn(),
+                                exit = androidx.compose.animation.fadeOut(),
                             ) {
                                 Box(
                                     modifier = Modifier
@@ -252,8 +273,8 @@ fun MediaPlayerScreen(
                                     .padding(top = 24.dp)
                                     .align(Alignment.TopCenter),
                                 visible = tapGestureState.isLongPressGestureInAction,
-                                enter = fadeIn(),
-                                exit = fadeOut(),
+                                enter = androidx.compose.animation.fadeIn(),
+                                exit = androidx.compose.animation.fadeOut(),
                             ) {
                                 Surface(shape = CircleShape) {
                                     Row(
@@ -274,10 +295,10 @@ fun MediaPlayerScreen(
                             }
                         }
                     }
-                    if (uiState.showVideoNotesPanel && uiState.videoNotes != null && playerPreferences.videoNotesPosition == VideoNotesPosition.RIGHT) {
+                    if (uiState.showVideoNotesPanel && uiState.videoNotes != null && notesLayout == VideoNotesLayout.RIGHT) {
                         VideoNotesView(
                             notes = uiState.videoNotes!!,
-                            position = VideoNotesPosition.RIGHT,
+                            layout = VideoNotesLayout.RIGHT,
                             sizeFraction = videoNotesSize,
                             onSizeChange = {
                                 if (isLandscape) {
@@ -290,10 +311,11 @@ fun MediaPlayerScreen(
                         )
                     }
                 }
-                if (uiState.showVideoNotesPanel && uiState.videoNotes != null && playerPreferences.videoNotesPosition == VideoNotesPosition.BOTTOM) {
+
+                if (uiState.showVideoNotesPanel && uiState.videoNotes != null && notesLayout == VideoNotesLayout.BOTTOM) {
                     VideoNotesView(
                         notes = uiState.videoNotes!!,
-                        position = VideoNotesPosition.BOTTOM,
+                        layout = VideoNotesLayout.BOTTOM,
                         sizeFraction = videoNotesSize,
                         onSizeChange = {
                             if (isLandscape) {
@@ -324,10 +346,10 @@ fun MediaPlayerScreen(
                 } else {
                     PlayerControlsView(
                         topView = {
-                            AnimatedVisibility(
+                            androidx.compose.animation.AnimatedVisibility(
                                 visible = controlsVisibilityState.controlsVisible,
-                                enter = fadeIn(),
-                                exit = fadeOut(),
+                                enter = androidx.compose.animation.fadeIn(),
+                                exit = androidx.compose.animation.fadeOut(),
                             ) {
                                 ControlsTopView(
                                     title = metadataState.title ?: "",
@@ -365,10 +387,10 @@ fun MediaPlayerScreen(
                             }
                         },
                         bottomView = {
-                            AnimatedVisibility(
+                            androidx.compose.animation.AnimatedVisibility(
                                 visible = controlsVisibilityState.controlsVisible && !controlsVisibilityState.controlsLocked,
-                                enter = fadeIn(),
-                                exit = fadeOut(),
+                                enter = androidx.compose.animation.fadeIn(),
+                                exit = androidx.compose.animation.fadeOut(),
                             ) {
                                 val context = LocalContext.current
                                 ControlsBottomView(
@@ -418,11 +440,11 @@ fun MediaPlayerScreen(
                         .padding(systemBarsPadding.copy(top = 0.dp, bottom = 0.dp))
                         .padding(24.dp),
                 ) {
-                    AnimatedVisibility(
+                    androidx.compose.animation.AnimatedVisibility(
                         modifier = Modifier.align(Alignment.CenterStart),
                         visible = volumeAndBrightnessGestureState.activeGesture == VerticalGesture.VOLUME,
-                        enter = fadeIn(),
-                        exit = fadeOut(),
+                        enter = androidx.compose.animation.fadeIn(),
+                        exit = androidx.compose.animation.fadeOut(),
                     ) {
                         VerticalProgressView(
                             value = volumeState.volumePercentage,
@@ -431,11 +453,11 @@ fun MediaPlayerScreen(
                         )
                     }
 
-                    AnimatedVisibility(
+                    androidx.compose.animation.AnimatedVisibility(
                         modifier = Modifier.align(Alignment.CenterEnd),
                         visible = volumeAndBrightnessGestureState.activeGesture == VerticalGesture.BRIGHTNESS,
-                        enter = fadeIn(),
-                        exit = fadeOut(),
+                        enter = androidx.compose.animation.fadeIn(),
+                        exit = androidx.compose.animation.fadeOut(),
                     ) {
                         VerticalProgressView(
                             value = brightnessState.brightnessPercentage,

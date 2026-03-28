@@ -30,27 +30,32 @@ import androidx.compose.ui.unit.dp
 import dev.anilbeesetti.nextplayer.core.model.VideoNotesPosition
 import dev.anilbeesetti.nextplayer.core.ui.R
 
+enum class VideoNotesLayout {
+    TOP, BOTTOM, LEFT, RIGHT
+}
+
 @Composable
 fun VideoNotesView(
     notes: String,
-    position: VideoNotesPosition,
+    layout: VideoNotesLayout,
     sizeFraction: Float,
     onSizeChange: (Float) -> Unit,
     onCloseClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val isHorizontal = layout == VideoNotesLayout.TOP || layout == VideoNotesLayout.BOTTOM
+
     BoxWithConstraints(
         modifier = modifier
             .background(Color.Black.copy(alpha = 0.6f))
             .then(
-                if (position == VideoNotesPosition.BOTTOM) {
+                if (isHorizontal) {
                     Modifier.fillMaxWidth().fillMaxHeight(sizeFraction)
                 } else {
                     Modifier.fillMaxHeight().fillMaxWidth(sizeFraction)
                 }
             ),
     ) {
-        val maxWidth = maxWidth
         val maxHeight = maxHeight
 
         Column(
@@ -81,35 +86,47 @@ fun VideoNotesView(
         Box(
             modifier = Modifier
                 .then(
-                    if (position == VideoNotesPosition.BOTTOM) {
-                        Modifier
-                            .fillMaxWidth()
-                            .height(20.dp)
-                            .align(Alignment.TopCenter)
-                            .pointerInput(Unit) {
-                                detectDragGestures { change, dragAmount ->
-                                    change.consume()
-                                    val delta = dragAmount.y / size.height.toFloat()
-                                    onSizeChange((sizeFraction - delta).coerceIn(0.1f, 0.8f))
-                                }
-                            }
-                    } else {
-                        val alignment = if (position == VideoNotesPosition.LEFT) Alignment.CenterEnd else Alignment.CenterStart
-                        Modifier
-                            .fillMaxHeight()
-                            .width(20.dp)
-                            .align(alignment)
-                            .pointerInput(Unit) {
-                                detectDragGestures { change, dragAmount ->
-                                    change.consume()
-                                    val delta = dragAmount.x / size.width.toFloat()
-                                    if (position == VideoNotesPosition.LEFT) {
+                    when (layout) {
+                        VideoNotesLayout.TOP -> {
+                            Modifier.fillMaxWidth().height(20.dp).align(Alignment.BottomCenter)
+                                .pointerInput(Unit) {
+                                    detectDragGestures { change, dragAmount ->
+                                        change.consume()
+                                        val delta = dragAmount.y / size.height.toFloat()
                                         onSizeChange((sizeFraction + delta).coerceIn(0.1f, 0.8f))
-                                    } else {
+                                    }
+                                }
+                        }
+                        VideoNotesLayout.BOTTOM -> {
+                            Modifier.fillMaxWidth().height(20.dp).align(Alignment.TopCenter)
+                                .pointerInput(Unit) {
+                                    detectDragGestures { change, dragAmount ->
+                                        change.consume()
+                                        val delta = dragAmount.y / size.height.toFloat()
                                         onSizeChange((sizeFraction - delta).coerceIn(0.1f, 0.8f))
                                     }
                                 }
-                            }
+                        }
+                        VideoNotesLayout.LEFT -> {
+                            Modifier.fillMaxHeight().width(20.dp).align(Alignment.CenterEnd)
+                                .pointerInput(Unit) {
+                                    detectDragGestures { change, dragAmount ->
+                                        change.consume()
+                                        val delta = dragAmount.x / size.width.toFloat()
+                                        onSizeChange((sizeFraction + delta).coerceIn(0.1f, 0.8f))
+                                    }
+                                }
+                        }
+                        VideoNotesLayout.RIGHT -> {
+                            Modifier.fillMaxHeight().width(20.dp).align(Alignment.CenterStart)
+                                .pointerInput(Unit) {
+                                    detectDragGestures { change, dragAmount ->
+                                        change.consume()
+                                        val delta = dragAmount.x / size.width.toFloat()
+                                        onSizeChange((sizeFraction - delta).coerceIn(0.1f, 0.8f))
+                                    }
+                                }
+                        }
                     }
                 ),
             contentAlignment = Alignment.Center
@@ -118,7 +135,7 @@ fun VideoNotesView(
                 modifier = Modifier
                     .background(Color.White.copy(alpha = 0.5f), CircleShape)
                     .then(
-                        if (position == VideoNotesPosition.BOTTOM) {
+                        if (isHorizontal) {
                             Modifier.width(40.dp).height(4.dp)
                         } else {
                             Modifier.width(4.dp).height(40.dp)

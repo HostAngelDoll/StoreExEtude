@@ -59,21 +59,27 @@ class PlayerViewModel @Inject constructor(
         viewModelScope.launch {
             val notes = withContext(Dispatchers.IO) {
                 try {
-                    val fileName = context.getFilenameFromContentUri(uri)
-                        ?: uri.lastPathSegment ?: return@withContext null
-
-                    val videoNameWithoutExtension = fileName.substringBeforeLast(".")
-                    val notesFileName = "$videoNameWithoutExtension.txt"
-
-                    // Try to find the .txt file in the same directory using MediaStore
                     val path = context.getPath(uri)
                     if (path != null) {
                         val videoFile = File(path)
-                        val notesFile = File(videoFile.parent, notesFileName)
-                        if (notesFile.exists() && notesFile.isFile) {
-                            return@withContext notesFile.readText()
+                        val videoNameWithoutExtension = videoFile.nameWithoutExtension
+                        val extensions = listOf("txt", "md")
+                        for (ext in extensions) {
+                            val notesFile = File(videoFile.parent, "$videoNameWithoutExtension.$ext")
+                            if (notesFile.exists() && notesFile.isFile) {
+                                return@withContext notesFile.readText()
+                            }
                         }
                     }
+
+                    // Fallback using display name if path is null
+                    val fileName = context.getFilenameFromContentUri(uri)
+                        ?: uri.lastPathSegment ?: return@withContext null
+                    val videoNameWithoutExtension = fileName.substringBeforeLast(".")
+
+                    // If we have a path, we already tried this name in that directory.
+                    // If path was null, we don't know the directory, so we can't do much with just the name
+                    // unless we use SAF to list siblings, which requires a tree URI.
 
                     null
                 } catch (e: Exception) {

@@ -301,7 +301,8 @@
     <string name="show_video_notes">Mostrar notas de video</string>
     <string name="show_video_notes_description">Muestra un archivo de texto con el mismo nombre que el video si existe en la misma carpeta</string>
     <string name="video_notes_position">Posición de las notas del video</string>
-    <string name="bottom">Abajo</string>
+    <string name="video_notes_position_start">Izquierda / Arriba</string>
+    <string name="video_notes_position_end">Derecha / Abajo</string>
     <string name="video_notes_size_landscape">Tamaño de notas (Horizontal)</string>
     <string name="video_notes_size_portrait">Tamaño de notas (Vertical)</string>
 </resources>

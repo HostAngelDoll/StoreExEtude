@@ -7,7 +7,6 @@ import dev.anilbeesetti.nextplayer.core.ui.R
 
 @Composable
 fun VideoNotesPosition.name() = when (this) {
-    VideoNotesPosition.LEFT -> stringResource(id = R.string.control_buttons_alignment_left)
-    VideoNotesPosition.RIGHT -> stringResource(id = R.string.control_buttons_alignment_right)
-    VideoNotesPosition.BOTTOM -> stringResource(id = R.string.bottom)
+    VideoNotesPosition.START -> stringResource(id = R.string.video_notes_position_start)
+    VideoNotesPosition.END -> stringResource(id = R.string.video_notes_position_end)
 }
