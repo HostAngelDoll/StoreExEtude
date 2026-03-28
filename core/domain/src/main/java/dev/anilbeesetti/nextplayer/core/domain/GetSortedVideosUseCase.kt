@@ -6,6 +6,7 @@ import dev.anilbeesetti.nextplayer.core.data.repository.MediaRepository
 import dev.anilbeesetti.nextplayer.core.data.repository.PreferencesRepository
 import dev.anilbeesetti.nextplayer.core.model.Sort
 import dev.anilbeesetti.nextplayer.core.model.Video
+import java.io.File
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -36,7 +37,17 @@ class GetSortedVideosUseCase @Inject constructor(
             }
 
             val sort = Sort(by = preferences.sortBy, order = preferences.sortOrder)
-            nonExcludedVideos.sortedWith(sort.videoComparator())
+            val sorted = nonExcludedVideos.sortedWith(sort.videoComparator())
+
+            sorted.map { video ->
+                val videoFile = File(video.path)
+                val videoNameWithoutExtension = videoFile.nameWithoutExtension
+                val extensions = listOf("txt", "md")
+                val notesExtension = extensions.firstOrNull { ext ->
+                    File(videoFile.parent, "$videoNameWithoutExtension.$ext").exists()
+                }
+                video.copy(notesExtension = notesExtension)
+            }
         }.flowOn(defaultDispatcher)
     }
 }

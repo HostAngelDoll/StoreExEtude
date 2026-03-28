@@ -33,7 +33,7 @@ fun ControlsTopView(
     onSubtitleClick: () -> Unit = {},
     onPlaybackSpeedClick: () -> Unit = {},
     onPlaylistClick: () -> Unit = {},
-    onNotesClick: () -> Unit = {},
+    onNotesClick: (() -> Unit)? = null,
     onBackClick: () -> Unit,
 ) {
     val systemBarsPadding = WindowInsets.systemBars.union(WindowInsets.displayCutout).asPaddingValues()
@@ -64,11 +64,13 @@ fun ControlsTopView(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            PlayerButton(onClick = onNotesClick) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_info),
-                    contentDescription = null,
-                )
+            if (onNotesClick != null) {
+                PlayerButton(onClick = onNotesClick) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_info),
+                        contentDescription = null,
+                    )
+                }
             }
             PlayerButton(onClick = onPlaylistClick) {
                 Icon(

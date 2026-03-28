@@ -51,7 +51,8 @@ class PlayerViewModel @Inject constructor(
     }
 
     fun loadVideoNotes(uri: Uri, context: android.content.Context) {
-        if (uiState.value.playerPreferences?.showVideoNotes != true) {
+        val showEnabled = uiState.value.playerPreferences?.showVideoNotes == true
+        if (!showEnabled) {
             internalUiState.update { it.copy(videoNotes = null, showVideoNotesPanel = false) }
             return
         }
@@ -59,7 +60,12 @@ class PlayerViewModel @Inject constructor(
         viewModelScope.launch {
             val notes = withContext(Dispatchers.IO) {
                 try {
-                    val path = context.getPath(uri)
+                    val path = if (uri.scheme == "file") {
+                        uri.path
+                    } else {
+                        context.getPath(uri)
+                    }
+
                     if (path != null) {
                         val videoFile = File(path)
                         val videoNameWithoutExtension = videoFile.nameWithoutExtension
@@ -70,16 +76,14 @@ class PlayerViewModel @Inject constructor(
                                 return@withContext notesFile.readText()
                             }
                         }
+                    } else if (uri.scheme == "content") {
+                        val fileName = context.getFilenameFromContentUri(uri)
+                            ?: uri.lastPathSegment ?: return@withContext null
+                        val videoNameWithoutExtension = fileName.substringBeforeLast(".")
+
+                        // Last ditch effort: if it's a media store URI, we might be able to query the parent
+                        // but getPath already tries that.
                     }
-
-                    // Fallback using display name if path is null
-                    val fileName = context.getFilenameFromContentUri(uri)
-                        ?: uri.lastPathSegment ?: return@withContext null
-                    val videoNameWithoutExtension = fileName.substringBeforeLast(".")
-
-                    // If we have a path, we already tried this name in that directory.
-                    // If path was null, we don't know the directory, so we can't do much with just the name
-                    // unless we use SAF to list siblings, which requires a tree URI.
 
                     null
                 } catch (e: Exception) {

@@ -157,6 +157,13 @@ private fun VideoListItem(
                     if (preferences.showResolutionField && video.height > 0) {
                         InfoChip(text = "${video.height}p")
                     }
+                    video.notesExtension?.let { notesExtension ->
+                        InfoChip(
+                            text = notesExtension,
+                            backgroundColor = MaterialTheme.colorScheme.tertiaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                        )
+                    }
                 }
             }
         },

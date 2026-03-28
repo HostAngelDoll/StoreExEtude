@@ -245,6 +245,10 @@ class PlayerActivity : ComponentActivity() {
                 setMediaItems(mediaItems, mediaItemIndexToPlay, playerApi.position?.toLong() ?: C.TIME_UNSET)
                 playWhenReady = viewModel.playWhenReady
                 prepare()
+
+                currentMediaItem?.localConfiguration?.uri?.let {
+                    viewModel.loadVideoNotes(it, this@PlayerActivity)
+                }
             }
         }
     }
@@ -252,7 +256,11 @@ class PlayerActivity : ComponentActivity() {
     private fun playbackStateListener() = object : Player.Listener {
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             super.onMediaItemTransition(mediaItem, reason)
-            intent.data = mediaItem?.localConfiguration?.uri
+            val uri = mediaItem?.localConfiguration?.uri
+            intent.data = uri
+            if (uri != null) {
+                viewModel.loadVideoNotes(uri, this@PlayerActivity)
+            }
         }
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {

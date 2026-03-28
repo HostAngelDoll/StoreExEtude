@@ -86,6 +86,43 @@ private fun PlayerPreferencesContent(
                 .padding(innerPadding)
                 .padding(horizontal = 16.dp),
         ) {
+            ListSectionTitle(text = stringResource(id = R.string.video_notes))
+            Column(
+                verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
+            ) {
+                PreferenceSwitch(
+                    title = stringResource(id = R.string.show_video_notes),
+                    description = stringResource(id = R.string.show_video_notes_description),
+                    icon = NextIcons.Info,
+                    isChecked = uiState.preferences.showVideoNotes,
+                    onClick = { onEvent(PlayerPreferencesUiEvent.ToggleShowVideoNotes) },
+                    isFirstItem = true,
+                )
+                ClickablePreferenceItem(
+                    title = stringResource(id = R.string.video_notes_position),
+                    description = uiState.preferences.videoNotesPosition.name(),
+                    icon = NextIcons.ButtonsPosition,
+                    onClick = { onEvent(PlayerPreferencesUiEvent.ShowDialog(PlayerPreferenceDialog.VideoNotesPositionDialog)) },
+                )
+                PreferenceSlider(
+                    title = stringResource(id = R.string.video_notes_size_landscape),
+                    description = "${(uiState.preferences.videoNotesSizeLandscape * 100).toInt()}%",
+                    icon = NextIcons.Size,
+                    value = uiState.preferences.videoNotesSizeLandscape,
+                    valueRange = 0.1f..0.8f,
+                    onValueChange = { onEvent(PlayerPreferencesUiEvent.UpdateVideoNotesSizeLandscape(it)) },
+                )
+                PreferenceSlider(
+                    title = stringResource(id = R.string.video_notes_size_portrait),
+                    description = "${(uiState.preferences.videoNotesSizePortrait * 100).toInt()}%",
+                    icon = NextIcons.Size,
+                    value = uiState.preferences.videoNotesSizePortrait,
+                    valueRange = 0.1f..0.8f,
+                    onValueChange = { onEvent(PlayerPreferencesUiEvent.UpdateVideoNotesSizePortrait(it)) },
+                    isLastItem = true,
+                )
+            }
+
             ListSectionTitle(text = stringResource(id = R.string.interface_name))
             Column(
                 verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
@@ -113,35 +150,6 @@ private fun PlayerPreferencesContent(
                             )
                         }
                     },
-                )
-                PreferenceSwitch(
-                    title = stringResource(id = R.string.show_video_notes),
-                    description = stringResource(id = R.string.show_video_notes_description),
-                    icon = NextIcons.Info,
-                    isChecked = uiState.preferences.showVideoNotes,
-                    onClick = { onEvent(PlayerPreferencesUiEvent.ToggleShowVideoNotes) },
-                )
-                ClickablePreferenceItem(
-                    title = stringResource(id = R.string.video_notes_position),
-                    description = uiState.preferences.videoNotesPosition.name(),
-                    icon = NextIcons.ButtonsPosition,
-                    onClick = { onEvent(PlayerPreferencesUiEvent.ShowDialog(PlayerPreferenceDialog.VideoNotesPositionDialog)) },
-                )
-                PreferenceSlider(
-                    title = stringResource(id = R.string.video_notes_size_landscape),
-                    description = "${(uiState.preferences.videoNotesSizeLandscape * 100).toInt()}%",
-                    icon = NextIcons.Size,
-                    value = uiState.preferences.videoNotesSizeLandscape,
-                    valueRange = 0.1f..0.8f,
-                    onValueChange = { onEvent(PlayerPreferencesUiEvent.UpdateVideoNotesSizeLandscape(it)) },
-                )
-                PreferenceSlider(
-                    title = stringResource(id = R.string.video_notes_size_portrait),
-                    description = "${(uiState.preferences.videoNotesSizePortrait * 100).toInt()}%",
-                    icon = NextIcons.Size,
-                    value = uiState.preferences.videoNotesSizePortrait,
-                    valueRange = 0.1f..0.8f,
-                    onValueChange = { onEvent(PlayerPreferencesUiEvent.UpdateVideoNotesSizePortrait(it)) },
                     isLastItem = true,
                 )
             }

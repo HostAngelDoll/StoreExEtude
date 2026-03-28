@@ -25,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import dev.anilbeesetti.nextplayer.core.model.VideoNotesPosition
@@ -56,16 +57,28 @@ fun VideoNotesView(
                 }
             ),
     ) {
-        val maxHeight = maxHeight
+        val configuration = LocalConfiguration.current
+        val screenHeight = configuration.screenHeightDp.dp
 
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState()),
-        ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState()),
+            ) {
+                Spacer(modifier = Modifier.height(48.dp)) // Reserve space for close button
+                Text(
+                    text = notes,
+                    color = Color.White,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(8.dp),
+                )
+                Spacer(modifier = Modifier.height(screenHeight))
+            }
+
             IconButton(
                 onClick = onCloseClick,
-                modifier = Modifier.align(Alignment.End),
+                modifier = Modifier.align(Alignment.TopEnd),
             ) {
                 Icon(
                     painter = painterResource(id = R.drawable.ic_close),
@@ -73,13 +86,6 @@ fun VideoNotesView(
                     tint = Color.White,
                 )
             }
-            Text(
-                text = notes,
-                color = Color.White,
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(8.dp),
-            )
-            Spacer(modifier = Modifier.height(maxHeight))
         }
 
         // Draggable Handle
@@ -92,7 +98,7 @@ fun VideoNotesView(
                                 .pointerInput(Unit) {
                                     detectDragGestures { change, dragAmount ->
                                         change.consume()
-                                        val delta = dragAmount.y / size.height.toFloat()
+                                        val delta = dragAmount.y / constraints.maxHeight.toFloat()
                                         onSizeChange((sizeFraction + delta).coerceIn(0.1f, 0.8f))
                                     }
                                 }
@@ -102,7 +108,7 @@ fun VideoNotesView(
                                 .pointerInput(Unit) {
                                     detectDragGestures { change, dragAmount ->
                                         change.consume()
-                                        val delta = dragAmount.y / size.height.toFloat()
+                                        val delta = dragAmount.y / constraints.maxHeight.toFloat()
                                         onSizeChange((sizeFraction - delta).coerceIn(0.1f, 0.8f))
                                     }
                                 }
@@ -112,7 +118,7 @@ fun VideoNotesView(
                                 .pointerInput(Unit) {
                                     detectDragGestures { change, dragAmount ->
                                         change.consume()
-                                        val delta = dragAmount.x / size.width.toFloat()
+                                        val delta = dragAmount.x / constraints.maxWidth.toFloat()
                                         onSizeChange((sizeFraction + delta).coerceIn(0.1f, 0.8f))
                                     }
                                 }
@@ -122,7 +128,7 @@ fun VideoNotesView(
                                 .pointerInput(Unit) {
                                     detectDragGestures { change, dragAmount ->
                                         change.consume()
-                                        val delta = dragAmount.x / size.width.toFloat()
+                                        val delta = dragAmount.x / constraints.maxWidth.toFloat()
                                         onSizeChange((sizeFraction - delta).coerceIn(0.1f, 0.8f))
                                     }
                                 }

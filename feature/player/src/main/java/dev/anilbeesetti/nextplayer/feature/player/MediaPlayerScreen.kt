@@ -3,6 +3,7 @@ package dev.anilbeesetti.nextplayer.feature.player
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.annotation.OptIn
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
@@ -248,8 +249,8 @@ fun MediaPlayerScreen(
                         Box(modifier = Modifier.fillMaxSize()) {
                             androidx.compose.animation.AnimatedVisibility(
                                 visible = controlsVisibilityState.controlsVisible,
-                                enter = androidx.compose.animation.fadeIn(),
-                                exit = androidx.compose.animation.fadeOut(),
+                                enter = fadeIn(),
+                                exit = fadeOut(),
                             ) {
                                 Box(
                                     modifier = Modifier
@@ -273,8 +274,8 @@ fun MediaPlayerScreen(
                                     .padding(top = 24.dp)
                                     .align(Alignment.TopCenter),
                                 visible = tapGestureState.isLongPressGestureInAction,
-                                enter = androidx.compose.animation.fadeIn(),
-                                exit = androidx.compose.animation.fadeOut(),
+                                enter = fadeIn(),
+                                exit = fadeOut(),
                             ) {
                                 Surface(shape = CircleShape) {
                                     Row(
@@ -346,10 +347,10 @@ fun MediaPlayerScreen(
                 } else {
                     PlayerControlsView(
                         topView = {
-                            androidx.compose.animation.AnimatedVisibility(
+                            AnimatedVisibility(
                                 visible = controlsVisibilityState.controlsVisible,
-                                enter = androidx.compose.animation.fadeIn(),
-                                exit = androidx.compose.animation.fadeOut(),
+                                enter = fadeIn(),
+                                exit = fadeOut(),
                             ) {
                                 ControlsTopView(
                                     title = metadataState.title ?: "",
@@ -369,10 +370,12 @@ fun MediaPlayerScreen(
                                         controlsVisibilityState.hideControls()
                                         overlayView = OverlayView.PLAYLIST
                                     },
-                                    onNotesClick = {
-                                        controlsVisibilityState.hideControls()
-                                        viewModel.toggleVideoNotesPanel()
-                                    },
+                                    onNotesClick = if (uiState.videoNotes != null) {
+                                        {
+                                            controlsVisibilityState.hideControls()
+                                            viewModel.toggleVideoNotesPanel()
+                                        }
+                                    } else null,
                                     onBackClick = onBackClick,
                                 )
                             }
@@ -387,10 +390,10 @@ fun MediaPlayerScreen(
                             }
                         },
                         bottomView = {
-                            androidx.compose.animation.AnimatedVisibility(
+                            AnimatedVisibility(
                                 visible = controlsVisibilityState.controlsVisible && !controlsVisibilityState.controlsLocked,
-                                enter = androidx.compose.animation.fadeIn(),
-                                exit = androidx.compose.animation.fadeOut(),
+                                enter = fadeIn(),
+                                exit = fadeOut(),
                             ) {
                                 val context = LocalContext.current
                                 ControlsBottomView(
@@ -440,11 +443,11 @@ fun MediaPlayerScreen(
                         .padding(systemBarsPadding.copy(top = 0.dp, bottom = 0.dp))
                         .padding(24.dp),
                 ) {
-                    androidx.compose.animation.AnimatedVisibility(
+                    AnimatedVisibility(
                         modifier = Modifier.align(Alignment.CenterStart),
                         visible = volumeAndBrightnessGestureState.activeGesture == VerticalGesture.VOLUME,
-                        enter = androidx.compose.animation.fadeIn(),
-                        exit = androidx.compose.animation.fadeOut(),
+                        enter = fadeIn(),
+                        exit = fadeOut(),
                     ) {
                         VerticalProgressView(
                             value = volumeState.volumePercentage,
@@ -453,11 +456,11 @@ fun MediaPlayerScreen(
                         )
                     }
 
-                    androidx.compose.animation.AnimatedVisibility(
+                    AnimatedVisibility(
                         modifier = Modifier.align(Alignment.CenterEnd),
                         visible = volumeAndBrightnessGestureState.activeGesture == VerticalGesture.BRIGHTNESS,
-                        enter = androidx.compose.animation.fadeIn(),
-                        exit = androidx.compose.animation.fadeOut(),
+                        enter = fadeIn(),
+                        exit = fadeOut(),
                     ) {
                         VerticalProgressView(
                             value = brightnessState.brightnessPercentage,

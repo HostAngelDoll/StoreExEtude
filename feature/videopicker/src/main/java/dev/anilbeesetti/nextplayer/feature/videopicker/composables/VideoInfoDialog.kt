@@ -50,6 +50,12 @@ fun VideoInfoDialog(
                     title = stringResource(id = R.string.location),
                     subText = video.parentPath,
                 )
+                video.notesExtension?.let { notesExtension ->
+                    MediaInfoText(
+                        title = "Notes",
+                        subText = notesExtension,
+                    )
+                }
                 MediaInfoText(
                     title = stringResource(id = R.string.size),
                     subText = video.formattedFileSize,
