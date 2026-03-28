@@ -28,6 +28,7 @@ import dev.anilbeesetti.nextplayer.core.model.ControlButtonsPosition
 import dev.anilbeesetti.nextplayer.core.model.PlayerPreferences
 import dev.anilbeesetti.nextplayer.core.model.Resume
 import dev.anilbeesetti.nextplayer.core.model.ScreenOrientation
+import dev.anilbeesetti.nextplayer.core.model.VideoNotesPosition
 import dev.anilbeesetti.nextplayer.core.ui.R
 import dev.anilbeesetti.nextplayer.core.ui.components.ClickablePreferenceItem
 import dev.anilbeesetti.nextplayer.core.ui.components.ListSectionTitle
@@ -104,7 +105,6 @@ private fun PlayerPreferencesContent(
                     value = uiState.preferences.controllerAutoHideTimeout.toFloat(),
                     valueRange = 1.0f..60.0f,
                     onValueChange = { onEvent(PlayerPreferencesUiEvent.UpdateControlAutoHideTimeout(it.toInt())) },
-                    isLastItem = true,
                     trailingContent = {
                         FilledIconButton(onClick = { onEvent(PlayerPreferencesUiEvent.UpdateControlAutoHideTimeout(PlayerPreferences.DEFAULT_CONTROLLER_AUTO_HIDE_TIMEOUT)) }) {
                             Icon(
@@ -113,6 +113,36 @@ private fun PlayerPreferencesContent(
                             )
                         }
                     },
+                )
+                PreferenceSwitch(
+                    title = stringResource(id = R.string.show_video_notes),
+                    description = stringResource(id = R.string.show_video_notes_description),
+                    icon = NextIcons.Info,
+                    isChecked = uiState.preferences.showVideoNotes,
+                    onClick = { onEvent(PlayerPreferencesUiEvent.ToggleShowVideoNotes) },
+                )
+                ClickablePreferenceItem(
+                    title = stringResource(id = R.string.video_notes_position),
+                    description = uiState.preferences.videoNotesPosition.name(),
+                    icon = NextIcons.ButtonsPosition,
+                    onClick = { onEvent(PlayerPreferencesUiEvent.ShowDialog(PlayerPreferenceDialog.VideoNotesPositionDialog)) },
+                )
+                PreferenceSlider(
+                    title = stringResource(id = R.string.video_notes_size_landscape),
+                    description = "${(uiState.preferences.videoNotesSizeLandscape * 100).toInt()}%",
+                    icon = NextIcons.Size,
+                    value = uiState.preferences.videoNotesSizeLandscape,
+                    valueRange = 0.1f..0.8f,
+                    onValueChange = { onEvent(PlayerPreferencesUiEvent.UpdateVideoNotesSizeLandscape(it)) },
+                )
+                PreferenceSlider(
+                    title = stringResource(id = R.string.video_notes_size_portrait),
+                    description = "${(uiState.preferences.videoNotesSizePortrait * 100).toInt()}%",
+                    icon = NextIcons.Size,
+                    value = uiState.preferences.videoNotesSizePortrait,
+                    valueRange = 0.1f..0.8f,
+                    onValueChange = { onEvent(PlayerPreferencesUiEvent.UpdateVideoNotesSizePortrait(it)) },
+                    isLastItem = true,
                 )
             }
 
@@ -249,6 +279,24 @@ private fun PlayerPreferencesContent(
                                 selected = it == uiState.preferences.controlButtonsPosition,
                                 onClick = {
                                     onEvent(PlayerPreferencesUiEvent.UpdatePreferredControlButtonsPosition(it))
+                                    onEvent(PlayerPreferencesUiEvent.ShowDialog(null))
+                                },
+                            )
+                        }
+                    }
+                }
+
+                PlayerPreferenceDialog.VideoNotesPositionDialog -> {
+                    OptionsDialog(
+                        text = stringResource(id = R.string.video_notes_position),
+                        onDismissClick = { onEvent(PlayerPreferencesUiEvent.ShowDialog(null)) },
+                    ) {
+                        items(VideoNotesPosition.entries.toTypedArray()) {
+                            RadioTextButton(
+                                text = it.name(),
+                                selected = it == uiState.preferences.videoNotesPosition,
+                                onClick = {
+                                    onEvent(PlayerPreferencesUiEvent.UpdatePreferredVideoNotesPosition(it))
                                     onEvent(PlayerPreferencesUiEvent.ShowDialog(null))
                                 },
                             )

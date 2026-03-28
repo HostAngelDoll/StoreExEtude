@@ -12,13 +12,19 @@ import dev.anilbeesetti.nextplayer.core.model.LoopMode
 import dev.anilbeesetti.nextplayer.core.model.PlayerPreferences
 import dev.anilbeesetti.nextplayer.core.model.Video
 import dev.anilbeesetti.nextplayer.core.model.VideoContentScale
+import dev.anilbeesetti.nextplayer.core.common.extensions.getFilenameFromContentUri
+import dev.anilbeesetti.nextplayer.core.common.extensions.getPath
+import dev.anilbeesetti.nextplayer.core.common.extensions.round
 import dev.anilbeesetti.nextplayer.feature.player.state.SubtitleOptionsEvent
 import dev.anilbeesetti.nextplayer.feature.player.state.VideoZoomEvent
 import javax.inject.Inject
+import java.io.File
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
@@ -42,6 +48,44 @@ class PlayerViewModel @Inject constructor(
                 internalUiState.update { it.copy(playerPreferences = prefs) }
             }
         }
+    }
+
+    fun loadVideoNotes(uri: Uri, context: android.content.Context) {
+        if (uiState.value.playerPreferences?.showVideoNotes != true) {
+            internalUiState.update { it.copy(videoNotes = null, showVideoNotesPanel = false) }
+            return
+        }
+
+        viewModelScope.launch {
+            val notes = withContext(Dispatchers.IO) {
+                try {
+                    val fileName = context.getFilenameFromContentUri(uri)
+                        ?: uri.lastPathSegment ?: return@withContext null
+
+                    val videoNameWithoutExtension = fileName.substringBeforeLast(".")
+                    val notesFileName = "$videoNameWithoutExtension.txt"
+
+                    // Try to find the .txt file in the same directory using MediaStore
+                    val path = context.getPath(uri)
+                    if (path != null) {
+                        val videoFile = File(path)
+                        val notesFile = File(videoFile.parent, notesFileName)
+                        if (notesFile.exists() && notesFile.isFile) {
+                            return@withContext notesFile.readText()
+                        }
+                    }
+
+                    null
+                } catch (e: Exception) {
+                    null
+                }
+            }
+            internalUiState.update { it.copy(videoNotes = notes, showVideoNotesPanel = notes != null) }
+        }
+    }
+
+    fun toggleVideoNotesPanel() {
+        internalUiState.update { it.copy(showVideoNotesPanel = !it.showVideoNotesPanel) }
     }
 
     suspend fun getPlaylistFromUri(uri: Uri): List<Video> {
@@ -105,11 +149,29 @@ class PlayerViewModel @Inject constructor(
             mediaRepository.updateSubtitleSpeed(uri, speed)
         }
     }
+
+    fun preferencesRepositoryScopeUpdateLandscapeSize(value: Float) {
+        viewModelScope.launch {
+            preferencesRepository.updatePlayerPreferences {
+                it.copy(videoNotesSizeLandscape = value.round(2))
+            }
+        }
+    }
+
+    fun preferencesRepositoryScopeUpdatePortraitSize(value: Float) {
+        viewModelScope.launch {
+            preferencesRepository.updatePlayerPreferences {
+                it.copy(videoNotesSizePortrait = value.round(2))
+            }
+        }
+    }
 }
 
 @Stable
 data class PlayerUiState(
     val playerPreferences: PlayerPreferences? = null,
+    val videoNotes: String? = null,
+    val showVideoNotesPanel: Boolean = false,
 )
 
 sealed interface PlayerEvent

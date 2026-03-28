@@ -10,6 +10,7 @@ import dev.anilbeesetti.nextplayer.core.model.ControlButtonsPosition
 import dev.anilbeesetti.nextplayer.core.model.PlayerPreferences
 import dev.anilbeesetti.nextplayer.core.model.Resume
 import dev.anilbeesetti.nextplayer.core.model.ScreenOrientation
+import dev.anilbeesetti.nextplayer.core.model.VideoNotesPosition
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -50,6 +51,10 @@ class PlayerPreferencesViewModel @Inject constructor(
             is PlayerPreferencesUiEvent.UpdateDefaultPlaybackSpeed -> updateDefaultPlaybackSpeed(event.value)
             is PlayerPreferencesUiEvent.UpdateControlAutoHideTimeout -> updateControlAutoHideTimeout(event.value)
             PlayerPreferencesUiEvent.ToggleUseMaterialYouControls -> toggleUseMaterialYouControls()
+            PlayerPreferencesUiEvent.ToggleShowVideoNotes -> toggleShowVideoNotes()
+            is PlayerPreferencesUiEvent.UpdatePreferredVideoNotesPosition -> updatePreferredVideoNotesPosition(event.value)
+            is PlayerPreferencesUiEvent.UpdateVideoNotesSizeLandscape -> updateVideoNotesSizeLandscape(event.value)
+            is PlayerPreferencesUiEvent.UpdateVideoNotesSizePortrait -> updateVideoNotesSizePortrait(event.value)
         }
     }
 
@@ -148,6 +153,38 @@ class PlayerPreferencesViewModel @Inject constructor(
             }
         }
     }
+
+    private fun toggleShowVideoNotes() {
+        viewModelScope.launch {
+            preferencesRepository.updatePlayerPreferences {
+                it.copy(showVideoNotes = !it.showVideoNotes)
+            }
+        }
+    }
+
+    private fun updatePreferredVideoNotesPosition(value: VideoNotesPosition) {
+        viewModelScope.launch {
+            preferencesRepository.updatePlayerPreferences {
+                it.copy(videoNotesPosition = value)
+            }
+        }
+    }
+
+    private fun updateVideoNotesSizeLandscape(value: Float) {
+        viewModelScope.launch {
+            preferencesRepository.updatePlayerPreferences {
+                it.copy(videoNotesSizeLandscape = value.round(2))
+            }
+        }
+    }
+
+    private fun updateVideoNotesSizePortrait(value: Float) {
+        viewModelScope.launch {
+            preferencesRepository.updatePlayerPreferences {
+                it.copy(videoNotesSizePortrait = value.round(2))
+            }
+        }
+    }
 }
 
 @Stable
@@ -160,6 +197,7 @@ sealed interface PlayerPreferenceDialog {
     data object ResumeDialog : PlayerPreferenceDialog
     data object PlayerScreenOrientationDialog : PlayerPreferenceDialog
     data object ControlButtonsDialog : PlayerPreferenceDialog
+    data object VideoNotesPositionDialog : PlayerPreferenceDialog
 }
 
 sealed interface PlayerPreferencesUiEvent {
@@ -175,4 +213,8 @@ sealed interface PlayerPreferencesUiEvent {
     data class UpdateDefaultPlaybackSpeed(val value: Float) : PlayerPreferencesUiEvent
     data class UpdateControlAutoHideTimeout(val value: Int) : PlayerPreferencesUiEvent
     data object ToggleUseMaterialYouControls : PlayerPreferencesUiEvent
+    data object ToggleShowVideoNotes : PlayerPreferencesUiEvent
+    data class UpdatePreferredVideoNotesPosition(val value: VideoNotesPosition) : PlayerPreferencesUiEvent
+    data class UpdateVideoNotesSizeLandscape(val value: Float) : PlayerPreferencesUiEvent
+    data class UpdateVideoNotesSizePortrait(val value: Float) : PlayerPreferencesUiEvent
 }

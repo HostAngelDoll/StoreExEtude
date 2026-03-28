@@ -298,4 +298,10 @@
     <string name="thumbnail_setting_change_confirmation">Cambiar este ajuste limpiará el caché de las miniaturas. Las miniaturas se generarán de nuevo cuando se abra la lista de medios. ¿Continuar?</string>
     <string name="material_you_controls">Controles Material You</string>
     <string name="material_you_controls_description">Utilizar el estilo Material You en los controles</string>
+    <string name="show_video_notes">Mostrar notas de video</string>
+    <string name="show_video_notes_description">Muestra un archivo de texto con el mismo nombre que el video si existe en la misma carpeta</string>
+    <string name="video_notes_position">Posición de las notas del video</string>
+    <string name="bottom">Abajo</string>
+    <string name="video_notes_size_landscape">Tamaño de notas (Horizontal)</string>
+    <string name="video_notes_size_portrait">Tamaño de notas (Vertical)</string>
 </resources>
