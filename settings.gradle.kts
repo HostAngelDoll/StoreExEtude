@@ -14,6 +14,14 @@ dependencyResolutionManagement {
     }
 }
 
+// WARNING: NO DELETE - FORCE CACHE BUILD OUT OF THIS REPOSITORY
+gradle.beforeProject {
+    val rootName = rootDir.name
+    val externalBuildDir = File("D:/GradleBuilds/$rootName")
+    project.layout.buildDirectory.set(
+        externalBuildDir.resolve(project.name)
+    )
+}
 
 /**
  * Use a local copy of nextlib, if it exists by uncommenting the below lines
