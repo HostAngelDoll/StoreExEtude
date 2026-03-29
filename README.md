@@ -68,6 +68,14 @@ the [Issues](https://github.com/anilbeesetti/nextplayer/issues) section.**
 - Zoom gesture
 - Picture-in-picture mode
 
+## Known Build Warnings
+
+When building the project, you might encounter warnings like `Unable to strip ... libavcodec.so, libavformat.so, etc.`.
+
+- These warnings come from prebuilt native libraries (FFmpeg, Media3 extensions).
+- They are non-blocking and do not affect the functionality of the app.
+- They may affect APK size optimization.
+
 ## Planned Features
 
 - External Audio support

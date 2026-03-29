@@ -19,9 +19,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.layout.onFirstVisible
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -140,6 +142,7 @@ fun MediaView(
                 span = { _, _ -> GridItemSpan(singleVideoSpan) },
             ) { index, video ->
                 val selected by remember { derivedStateOf { selectionManager.isVideoSelected(video) } }
+                var hasBeenVisible by remember(video.uriString) { mutableStateOf(false) }
                 VideoItem(
                     video = video,
                     preferences = preferences,
@@ -159,7 +162,12 @@ fun MediaView(
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         selectionManager.toggleVideoSelection(video)
                     },
-                    modifier = Modifier.onFirstVisible { onVideoLoaded(video.uriString.toUri()) },
+                    modifier = Modifier.onGloballyPositioned {
+                        if (!hasBeenVisible) {
+                            hasBeenVisible = true
+                            onVideoLoaded(video.uriString.toUri())
+                        }
+                    },
                 )
             }
         }
