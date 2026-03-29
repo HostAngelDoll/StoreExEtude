@@ -16,7 +16,8 @@ dependencyResolutionManagement {
 
 // Forzar build fuera del repo
 gradle.beforeProject {
-    val externalBuildDir = File("D:/GradleBuilds/StoreExEtude")
+    val rootName = rootDir.name
+    val externalBuildDir = File("D:/GradleBuilds/$rootName")
     project.layout.buildDirectory.set(
         externalBuildDir.resolve(project.name)
     )
