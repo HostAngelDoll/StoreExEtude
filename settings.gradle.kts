@@ -23,6 +23,7 @@ gradle.beforeProject {
     )
 }
 
+
 /**
  * Use a local copy of nextlib, if it exists by uncommenting the below lines
  * Assuming, that nextplayer and nextlib have the same parent directory.
