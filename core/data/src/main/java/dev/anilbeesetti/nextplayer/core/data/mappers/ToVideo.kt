@@ -5,6 +5,7 @@ import dev.anilbeesetti.nextplayer.core.database.entities.AudioStreamInfoEntity
 import dev.anilbeesetti.nextplayer.core.database.entities.SubtitleStreamInfoEntity
 import dev.anilbeesetti.nextplayer.core.database.relations.MediumWithInfo
 import dev.anilbeesetti.nextplayer.core.model.Video
+import java.io.File
 import java.util.Date
 
 fun MediumWithInfo.toVideo() = Video(
@@ -26,4 +27,5 @@ fun MediumWithInfo.toVideo() = Video(
     videoStream = videoStreamInfo?.toVideoStreamInfo(),
     audioStreams = audioStreamsInfo.map(AudioStreamInfoEntity::toAudioStreamInfo),
     subtitleStreams = subtitleStreamsInfo.map(SubtitleStreamInfoEntity::toSubtitleStreamInfo),
+    notesExtension = null, // Set by Repository or ViewModel to avoid blocking disk I/O in mapper
 )

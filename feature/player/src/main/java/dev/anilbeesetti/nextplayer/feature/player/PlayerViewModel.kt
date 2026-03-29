@@ -12,13 +12,20 @@ import dev.anilbeesetti.nextplayer.core.model.LoopMode
 import dev.anilbeesetti.nextplayer.core.model.PlayerPreferences
 import dev.anilbeesetti.nextplayer.core.model.Video
 import dev.anilbeesetti.nextplayer.core.model.VideoContentScale
+import dev.anilbeesetti.nextplayer.core.common.extensions.getFilenameFromContentUri
+import dev.anilbeesetti.nextplayer.core.common.extensions.getPath
+import dev.anilbeesetti.nextplayer.core.common.extensions.round
 import dev.anilbeesetti.nextplayer.feature.player.state.SubtitleOptionsEvent
 import dev.anilbeesetti.nextplayer.feature.player.state.VideoZoomEvent
 import javax.inject.Inject
+import java.io.File
+import androidx.documentfile.provider.DocumentFile
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
@@ -42,6 +49,63 @@ class PlayerViewModel @Inject constructor(
                 internalUiState.update { it.copy(playerPreferences = prefs) }
             }
         }
+    }
+
+    fun loadVideoNotes(uri: Uri, context: android.content.Context) {
+        val showEnabled = uiState.value.playerPreferences?.showVideoNotes == true
+        if (!showEnabled) {
+            internalUiState.update { it.copy(videoNotes = null, showVideoNotesPanel = false) }
+            return
+        }
+
+        viewModelScope.launch {
+            val notes = withContext(Dispatchers.IO) {
+                try {
+                    val extensions = listOf("txt", "md")
+
+                    // Try with DocumentFile for content:// or file://
+                    val doc = DocumentFile.fromSingleUri(context, uri)
+                    val parent = doc?.parentFile
+                    val baseName = doc?.name?.substringBeforeLast(".")
+
+                    if (parent != null && baseName != null) {
+                        for (ext in extensions) {
+                            val notesFile = parent.findFile("$baseName.$ext")
+                            if (notesFile?.exists() == true && notesFile.isFile) {
+                                return@withContext context.contentResolver.openInputStream(notesFile.uri)?.use { it.bufferedReader().readText() }
+                            }
+                        }
+                    }
+
+                    // Fallback to absolute path for file:// or MediaStore where DocumentFile parent might be null
+                    val path = if (uri.scheme == "file") {
+                        uri.path
+                    } else {
+                        context.getPath(uri)
+                    }
+
+                    if (path != null) {
+                        val videoFile = File(path)
+                        val videoNameWithoutExtension = videoFile.nameWithoutExtension
+                        for (ext in extensions) {
+                            val notesFile = File(videoFile.parent, "$videoNameWithoutExtension.$ext")
+                            if (notesFile.exists() && notesFile.isFile) {
+                                return@withContext notesFile.readText()
+                            }
+                        }
+                    }
+
+                    null
+                } catch (e: Exception) {
+                    null
+                }
+            }
+            internalUiState.update { it.copy(videoNotes = notes) }
+        }
+    }
+
+    fun toggleVideoNotesPanel() {
+        internalUiState.update { it.copy(showVideoNotesPanel = !it.showVideoNotesPanel) }
     }
 
     suspend fun getPlaylistFromUri(uri: Uri): List<Video> {
@@ -105,11 +169,29 @@ class PlayerViewModel @Inject constructor(
             mediaRepository.updateSubtitleSpeed(uri, speed)
         }
     }
+
+    fun preferencesRepositoryScopeUpdateLandscapeSize(value: Float) {
+        viewModelScope.launch {
+            preferencesRepository.updatePlayerPreferences {
+                it.copy(videoNotesSizeLandscape = value.round(2))
+            }
+        }
+    }
+
+    fun preferencesRepositoryScopeUpdatePortraitSize(value: Float) {
+        viewModelScope.launch {
+            preferencesRepository.updatePlayerPreferences {
+                it.copy(videoNotesSizePortrait = value.round(2))
+            }
+        }
+    }
 }
 
 @Stable
 data class PlayerUiState(
     val playerPreferences: PlayerPreferences? = null,
+    val videoNotes: String? = null,
+    val showVideoNotesPanel: Boolean = false,
 )
 
 sealed interface PlayerEvent
