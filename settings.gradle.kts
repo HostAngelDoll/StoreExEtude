@@ -14,6 +14,13 @@ dependencyResolutionManagement {
     }
 }
 
+// Forzar build fuera del repo
+gradle.beforeProject {
+    val externalBuildDir = File("D:/GradleBuilds/StoreExEtude")
+    project.layout.buildDirectory.set(
+        externalBuildDir.resolve(project.name)
+    )
+}
 
 /**
  * Use a local copy of nextlib, if it exists by uncommenting the below lines
