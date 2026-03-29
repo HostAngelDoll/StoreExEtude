@@ -171,6 +171,13 @@ fun MediaPlayerScreen(
         }
     }
 
+    val context = LocalContext.current
+    LaunchedEffect(player.currentMediaItem?.mediaId) {
+        player.currentMediaItem?.localConfiguration?.uri?.let { uri ->
+            viewModel.loadVideoNotes(uri, context)
+        }
+    }
+
     LaunchedEffect(brightnessState.currentBrightness) {
         if (playerPreferences.rememberPlayerBrightness) {
             viewModel.updatePlayerBrightness(brightnessState.currentBrightness)

@@ -61,7 +61,7 @@ class PlayerViewModel @Inject constructor(
         viewModelScope.launch {
             val notes = withContext(Dispatchers.IO) {
                 try {
-                    val extensions = listOf("txt", "md")
+                    val extensions = listOf("txt", "md", "TXT", "MD")
 
                     // Try with DocumentFile for content:// or file://
                     val doc = DocumentFile.fromSingleUri(context, uri)
@@ -100,7 +100,12 @@ class PlayerViewModel @Inject constructor(
                     null
                 }
             }
-            internalUiState.update { it.copy(videoNotes = notes) }
+            internalUiState.update {
+                it.copy(
+                    videoNotes = notes,
+                    showVideoNotesPanel = !notes.isNullOrBlank()
+                )
+            }
         }
     }
 
