@@ -75,12 +75,11 @@ object TextSidecarResolver {
         val parent = document.parentFile ?: return null
 
         for (ext in sidecarExtensions) {
-            for (candidate in listOf("$baseName.$ext", "$baseName.${ext.uppercase()}")) {
-                val sidecar = parent.findFile(candidate)
-                if (sidecar?.isFile == true) {
-                    return readText(context, sidecar.uri)
-                }
-            }
+            val lower = parent.findFile("$baseName.$ext")
+            if (lower?.isFile == true) return readText(context, lower.uri)
+
+            val upper = parent.findFile("$baseName.${ext.uppercase()}")
+            if (upper?.isFile == true) return readText(context, upper.uri)
         }
 
         parent.listFiles()

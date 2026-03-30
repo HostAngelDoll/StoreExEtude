@@ -1,5 +1,6 @@
 package dev.anilbeesetti.nextplayer.feature.player
 
+import android.content.res.Configuration
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.annotation.OptIn
@@ -212,7 +213,10 @@ fun MediaPlayerScreen(
         }
 
         Box {
+            val configuration = LocalConfiguration.current
+            val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
             val showPanel = uiState.applicationPreferences?.showSideTextPanel == true
+            val sideText = uiState.videoNotes?.takeIf { it.isNotBlank() } ?: "No sidecar text found"
 
             if (!showPanel) {
                 Box(
@@ -222,8 +226,32 @@ fun MediaPlayerScreen(
                 ) {
                     playerContent()
                 }
+            } else if (isLandscape) {
+                Row(
+                    modifier = modifier
+                        .fillMaxSize()
+                        .background(Color.Black),
+                ) {
+                    Box(modifier = Modifier.weight(0.72f)) {
+                        playerContent()
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .weight(0.28f)
+                            .fillMaxHeight()
+                            .background(Color.Black.copy(alpha = 0.6f))
+                            .verticalScroll(rememberScrollState())
+                            .padding(16.dp),
+                    ) {
+                        Text(
+                            text = sideText,
+                            color = Color.White,
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
+                }
             } else {
-                val sideText = uiState.videoNotes?.takeIf { it.isNotBlank() } ?: "No sidecar text found"
                 when (uiState.applicationPreferences?.sideTextPanelPosition) {
                     VideoTextPanelPosition.VIDEO_ABOVE_TEXT_BELOW -> {
                         Column(
@@ -234,18 +262,19 @@ fun MediaPlayerScreen(
                             Box(modifier = Modifier.weight(1f)) {
                                 playerContent()
                             }
+
                             Box(
                                 modifier = Modifier
                                     .weight(1f)
                                     .fillMaxWidth()
                                     .background(Color.Black.copy(alpha = 0.6f))
                                     .verticalScroll(rememberScrollState())
-                                    .padding(16.dp)
+                                    .padding(16.dp),
                             ) {
                                 Text(
                                     text = sideText,
                                     color = Color.White,
-                                    style = MaterialTheme.typography.bodyMedium
+                                    style = MaterialTheme.typography.bodyMedium,
                                 )
                             }
                         }
@@ -260,18 +289,19 @@ fun MediaPlayerScreen(
                             Box(modifier = Modifier.weight(1f)) {
                                 playerContent()
                             }
+
                             Box(
                                 modifier = Modifier
                                     .weight(1f)
                                     .fillMaxHeight()
                                     .background(Color.Black.copy(alpha = 0.6f))
                                     .verticalScroll(rememberScrollState())
-                                    .padding(16.dp)
+                                    .padding(16.dp),
                             ) {
                                 Text(
                                     text = sideText,
                                     color = Color.White,
-                                    style = MaterialTheme.typography.bodyMedium
+                                    style = MaterialTheme.typography.bodyMedium,
                                 )
                             }
                         }
