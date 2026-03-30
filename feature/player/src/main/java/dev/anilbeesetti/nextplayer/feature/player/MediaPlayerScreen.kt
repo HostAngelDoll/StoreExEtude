@@ -8,7 +8,12 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -56,7 +61,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import dev.anilbeesetti.nextplayer.core.model.ControlButtonsPosition
 import dev.anilbeesetti.nextplayer.core.model.PlayerPreferences
-import dev.anilbeesetti.nextplayer.core.model.VideoNotesPosition
+import dev.anilbeesetti.nextplayer.core.model.VideoTextPanelPosition
 import dev.anilbeesetti.nextplayer.core.ui.R as coreUiR
 import dev.anilbeesetti.nextplayer.core.ui.extensions.copy
 import dev.anilbeesetti.nextplayer.feature.player.buttons.NextButton
@@ -85,8 +90,6 @@ import dev.anilbeesetti.nextplayer.feature.player.ui.OverlayShowView
 import dev.anilbeesetti.nextplayer.feature.player.ui.OverlayView
 import dev.anilbeesetti.nextplayer.feature.player.ui.SubtitleConfiguration
 import dev.anilbeesetti.nextplayer.feature.player.ui.VerticalProgressView
-import dev.anilbeesetti.nextplayer.feature.player.ui.VideoNotesLayout
-import dev.anilbeesetti.nextplayer.feature.player.ui.VideoNotesView
 import dev.anilbeesetti.nextplayer.feature.player.ui.controls.ControlsBottomView
 import dev.anilbeesetti.nextplayer.feature.player.ui.controls.ControlsTopView
 import kotlin.time.Duration.Companion.seconds
@@ -179,154 +182,110 @@ fun MediaPlayerScreen(
 
     var overlayView by remember { mutableStateOf<OverlayView?>(null) }
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val configuration = LocalConfiguration.current
-    val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
-    val videoNotesSize = if (isLandscape) playerPreferences.videoNotesSizeLandscape else playerPreferences.videoNotesSizePortrait
-
-    val notesLayout = when (playerPreferences.videoNotesPosition) {
-        VideoNotesPosition.START -> if (isLandscape) VideoNotesLayout.LEFT else VideoNotesLayout.TOP
-        VideoNotesPosition.END -> if (isLandscape) VideoNotesLayout.RIGHT else VideoNotesLayout.BOTTOM
-    }
 
     CompositionLocalProvider(LocalControlsVisibilityState provides controlsVisibilityState) {
+        val playerContent = @Composable {
+            Box(modifier = Modifier.fillMaxSize()) {
+                PlayerContentFrame(
+                    player = player,
+                    pictureInPictureState = pictureInPictureState,
+                    controlsVisibilityState = controlsVisibilityState,
+                    tapGestureState = tapGestureState,
+                    seekGestureState = seekGestureState,
+                    videoZoomAndContentScaleState = videoZoomAndContentScaleState,
+                    volumeAndBrightnessGestureState = volumeAndBrightnessGestureState,
+                    subtitleConfiguration = SubtitleConfiguration(
+                        useSystemCaptionStyle = playerPreferences.useSystemCaptionStyle,
+                        showBackground = playerPreferences.subtitleBackground,
+                        font = playerPreferences.subtitleFont,
+                        textSize = playerPreferences.subtitleTextSize,
+                        textBold = playerPreferences.subtitleTextBold,
+                        applyEmbeddedStyles = playerPreferences.applyEmbeddedStyles,
+                    ),
+                )
+                PlayerOverlays(
+                    controlsVisibilityState = controlsVisibilityState,
+                    mediaPresentationState = mediaPresentationState,
+                    tapGestureState = tapGestureState,
+                )
+            }
+        }
+
         Box {
-            Column(
-                modifier = modifier
-                    .fillMaxSize()
-                    .background(Color.Black),
-            ) {
-                if (uiState.showVideoNotesPanel && notesLayout == VideoNotesLayout.TOP) {
-                    VideoNotesView(
-                        notes = uiState.videoNotes ?: "",
-                        layout = VideoNotesLayout.TOP,
-                        sizeFraction = videoNotesSize,
-                        onSizeChange = {
-                            if (isLandscape) {
-                                viewModel.preferencesRepositoryScopeUpdateLandscapeSize(it)
-                            } else {
-                                viewModel.preferencesRepositoryScopeUpdatePortraitSize(it)
-                            }
-                        },
-                        onCloseClick = { viewModel.toggleVideoNotesPanel() },
-                    )
+            val showPanel = uiState.applicationPreferences?.showSideTextPanel == true && uiState.videoNotes != null
+
+            if (!showPanel) {
+                Box(
+                    modifier = modifier
+                        .fillMaxSize()
+                        .background(Color.Black),
+                ) {
+                    playerContent()
                 }
-
-                Row(modifier = Modifier.weight(1f)) {
-                    if (uiState.showVideoNotesPanel && notesLayout == VideoNotesLayout.LEFT) {
-                        VideoNotesView(
-                            notes = uiState.videoNotes ?: "",
-                            layout = VideoNotesLayout.LEFT,
-                            sizeFraction = videoNotesSize,
-                            onSizeChange = {
-                                if (isLandscape) {
-                                    viewModel.preferencesRepositoryScopeUpdateLandscapeSize(it)
-                                } else {
-                                    viewModel.preferencesRepositoryScopeUpdatePortraitSize(it)
-                                }
-                            },
-                            onCloseClick = { viewModel.toggleVideoNotesPanel() },
-                        )
-                    }
-                    Box(modifier = Modifier.weight(1f)) {
-                        PlayerContentFrame(
-                            player = player,
-                            pictureInPictureState = pictureInPictureState,
-                            controlsVisibilityState = controlsVisibilityState,
-                            tapGestureState = tapGestureState,
-                            seekGestureState = seekGestureState,
-                            videoZoomAndContentScaleState = videoZoomAndContentScaleState,
-                            volumeAndBrightnessGestureState = volumeAndBrightnessGestureState,
-                            subtitleConfiguration = SubtitleConfiguration(
-                                useSystemCaptionStyle = playerPreferences.useSystemCaptionStyle,
-                                showBackground = playerPreferences.subtitleBackground,
-                                font = playerPreferences.subtitleFont,
-                                textSize = playerPreferences.subtitleTextSize,
-                                textBold = playerPreferences.subtitleTextBold,
-                                applyEmbeddedStyles = playerPreferences.applyEmbeddedStyles,
-                            ),
-                        )
-
-                        Box(modifier = Modifier.fillMaxSize()) {
-                            androidx.compose.animation.AnimatedVisibility(
-                                visible = controlsVisibilityState.controlsVisible,
-                                enter = fadeIn(),
-                                exit = fadeOut(),
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .background(Color.Black.copy(alpha = 0.3f)),
-                                )
+            } else {
+                val sideText = uiState.videoNotes!!
+                when (uiState.applicationPreferences?.sideTextPanelPosition) {
+                    VideoTextPanelPosition.VIDEO_ABOVE_TEXT_BELOW -> {
+                        Column(
+                            modifier = modifier
+                                .fillMaxSize()
+                                .background(Color.Black),
+                        ) {
+                            Box(modifier = Modifier.weight(1f)) {
+                                playerContent()
                             }
-
-                            if (mediaPresentationState.isBuffering) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier
-                                        .align(Alignment.Center)
-                                        .size(72.dp),
-                                )
-                            }
-
-                            DoubleTapIndicator(tapGestureState = tapGestureState)
-
-                            androidx.compose.animation.AnimatedVisibility(
+                            Box(
                                 modifier = Modifier
-                                    .padding(top = 24.dp)
-                                    .align(Alignment.TopCenter),
-                                visible = tapGestureState.isLongPressGestureInAction,
-                                enter = fadeIn(),
-                                exit = fadeOut(),
+                                    .weight(1f)
+                                    .fillMaxWidth()
+                                    .background(Color.Black.copy(alpha = 0.6f))
+                                    .verticalScroll(rememberScrollState())
+                                    .padding(16.dp)
                             ) {
-                                Surface(shape = CircleShape) {
-                                    Row(
-                                        modifier = Modifier.padding(
-                                            horizontal = 16.dp,
-                                            vertical = 8.dp,
-                                        ),
-                                    ) {
-                                        Text(
-                                            text = stringResource(
-                                                coreUiR.string.fast_playback_speed,
-                                                tapGestureState.longPressSpeed
-                                            ),
-                                            style = MaterialTheme.typography.labelLarge,
-                                        )
-                                    }
-                                }
+                                Text(
+                                    text = sideText,
+                                    color = Color.White,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
                             }
                         }
                     }
-                    if (uiState.showVideoNotesPanel && notesLayout == VideoNotesLayout.RIGHT) {
-                        VideoNotesView(
-                            notes = uiState.videoNotes ?: "",
-                            layout = VideoNotesLayout.RIGHT,
-                            sizeFraction = videoNotesSize,
-                            onSizeChange = {
-                                if (isLandscape) {
-                                    viewModel.preferencesRepositoryScopeUpdateLandscapeSize(it)
-                                } else {
-                                    viewModel.preferencesRepositoryScopeUpdatePortraitSize(it)
-                                }
-                            },
-                            onCloseClick = { viewModel.toggleVideoNotesPanel() },
-                        )
-                    }
-                }
 
-                if (uiState.showVideoNotesPanel && notesLayout == VideoNotesLayout.BOTTOM) {
-                    VideoNotesView(
-                        notes = uiState.videoNotes ?: "",
-                        layout = VideoNotesLayout.BOTTOM,
-                        sizeFraction = videoNotesSize,
-                        onSizeChange = {
-                            if (isLandscape) {
-                                viewModel.preferencesRepositoryScopeUpdateLandscapeSize(it)
-                            } else {
-                                viewModel.preferencesRepositoryScopeUpdatePortraitSize(it)
+                    VideoTextPanelPosition.VIDEO_LEFT_TEXT_RIGHT -> {
+                        Row(
+                            modifier = modifier
+                                .fillMaxSize()
+                                .background(Color.Black),
+                        ) {
+                            Box(modifier = Modifier.weight(1f)) {
+                                playerContent()
                             }
-                        },
-                        onCloseClick = { viewModel.toggleVideoNotesPanel() },
-                    )
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
+                                    .background(Color.Black.copy(alpha = 0.6f))
+                                    .verticalScroll(rememberScrollState())
+                                    .padding(16.dp)
+                            ) {
+                                Text(
+                                    text = sideText,
+                                    color = Color.White,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                        }
+                    }
+
+                    else -> {
+                        Box(
+                            modifier = modifier
+                                .fillMaxSize()
+                                .background(Color.Black),
+                        ) {
+                            playerContent()
+                        }
+                    }
                 }
             }
             Box(modifier = Modifier.fillMaxSize().displayCutoutPadding()) {
@@ -370,12 +329,7 @@ fun MediaPlayerScreen(
                                         controlsVisibilityState.hideControls()
                                         overlayView = OverlayView.PLAYLIST
                                     },
-                                    onNotesClick = if (uiState.playerPreferences?.showVideoNotes == true) {
-                                        {
-                                            controlsVisibilityState.hideControls()
-                                            viewModel.toggleVideoNotesPanel()
-                                        }
-                                    } else null,
+                                    onNotesClick = null,
                                     onBackClick = onBackClick,
                                 )
                             }
@@ -556,6 +510,63 @@ fun ControlsMiddleView(modifier: Modifier = Modifier, player: Player) {
         PreviousButton(player = player)
         PlayPauseButton(player = player)
         NextButton(player = player)
+    }
+}
+
+@Composable
+private fun PlayerOverlays(
+    controlsVisibilityState: ControlsVisibilityState,
+    mediaPresentationState: dev.anilbeesetti.nextplayer.feature.player.state.MediaPresentationState,
+    tapGestureState: dev.anilbeesetti.nextplayer.feature.player.state.TapGestureState,
+) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        androidx.compose.animation.AnimatedVisibility(
+            visible = controlsVisibilityState.controlsVisible,
+            enter = fadeIn(),
+            exit = fadeOut(),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.3f)),
+            )
+        }
+
+        if (mediaPresentationState.isBuffering) {
+            CircularProgressIndicator(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .size(72.dp),
+            )
+        }
+
+        DoubleTapIndicator(tapGestureState = tapGestureState)
+
+        androidx.compose.animation.AnimatedVisibility(
+            modifier = Modifier
+                .padding(top = 24.dp)
+                .align(Alignment.TopCenter),
+            visible = tapGestureState.isLongPressGestureInAction,
+            enter = fadeIn(),
+            exit = fadeOut(),
+        ) {
+            Surface(shape = CircleShape) {
+                Row(
+                    modifier = Modifier.padding(
+                        horizontal = 16.dp,
+                        vertical = 8.dp,
+                    ),
+                ) {
+                    Text(
+                        text = stringResource(
+                            coreUiR.string.fast_playback_speed,
+                            tapGestureState.longPressSpeed
+                        ),
+                        style = MaterialTheme.typography.labelLarge,
+                    )
+                }
+            }
+        }
     }
 }
 
