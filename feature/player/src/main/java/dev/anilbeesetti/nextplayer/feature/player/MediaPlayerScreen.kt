@@ -212,7 +212,7 @@ fun MediaPlayerScreen(
         }
 
         Box {
-            val showPanel = uiState.applicationPreferences?.showSideTextPanel == true && uiState.videoNotes != null
+            val showPanel = uiState.applicationPreferences?.showSideTextPanel == true
 
             if (!showPanel) {
                 Box(
@@ -223,7 +223,7 @@ fun MediaPlayerScreen(
                     playerContent()
                 }
             } else {
-                val sideText = uiState.videoNotes!!
+                val sideText = uiState.videoNotes.orEmpty()
                 when (uiState.applicationPreferences?.sideTextPanelPosition) {
                     VideoTextPanelPosition.VIDEO_ABOVE_TEXT_BELOW -> {
                         Column(

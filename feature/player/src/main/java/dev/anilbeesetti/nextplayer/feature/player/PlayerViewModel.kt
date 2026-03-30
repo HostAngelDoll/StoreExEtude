@@ -56,12 +56,6 @@ class PlayerViewModel @Inject constructor(
     }
 
     fun loadVideoNotes(uri: Uri, context: android.content.Context) {
-        val showEnabled = uiState.value.applicationPreferences?.showSideTextPanel == true
-        if (!showEnabled) {
-            internalUiState.update { it.copy(videoNotes = null) }
-            return
-        }
-
         viewModelScope.launch {
             val notes = TextSidecarResolver.resolve(context, uri)
             internalUiState.update { it.copy(videoNotes = notes) }
