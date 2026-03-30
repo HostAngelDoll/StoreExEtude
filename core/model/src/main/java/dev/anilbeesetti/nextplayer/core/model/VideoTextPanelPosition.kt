@@ -5,5 +5,5 @@ import kotlinx.serialization.Serializable
 @Serializable
 enum class VideoTextPanelPosition {
     VIDEO_ABOVE_TEXT_BELOW,
-    VIDEO_LEFT_TEXT_RIGHT
+    VIDEO_LEFT_TEXT_RIGHT,
 }
