@@ -2,9 +2,8 @@ name: Android Build
 
 on:
   push:
-    branches: [ "**" ]
+    branches: [ main ]
   pull_request:
-    branches: [ "**" ]
 concurrency:
   group: build-${{ github.ref }}
   cancel-in-progress: true

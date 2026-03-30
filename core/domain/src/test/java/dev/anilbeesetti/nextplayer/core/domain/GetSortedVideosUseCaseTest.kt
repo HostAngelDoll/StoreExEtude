@@ -2,19 +2,22 @@ package dev.anilbeesetti.nextplayer.core.domain
 
 import dev.anilbeesetti.nextplayer.core.data.repository.fake.FakeMediaRepository
 import dev.anilbeesetti.nextplayer.core.data.repository.fake.FakePreferencesRepository
+import android.content.Context
 import dev.anilbeesetti.nextplayer.core.model.Sort
 import dev.anilbeesetti.nextplayer.core.model.Video
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import org.mockito.Mockito.mock
 
 class GetSortedVideosUseCaseTest {
 
     private val mediaRepository = FakeMediaRepository()
     private val preferencesRepository = FakePreferencesRepository()
+    private val context = mock(Context::class.java)
 
-    val getSortedVideosUseCase = GetSortedVideosUseCase(mediaRepository, preferencesRepository)
+    val getSortedVideosUseCase = GetSortedVideosUseCase(mediaRepository, preferencesRepository, context)
 
     @Test
     fun testGetSortedVideosUseCase_whenSortByTitleAscending() = runTest {
