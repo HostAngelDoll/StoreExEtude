@@ -223,7 +223,7 @@ fun MediaPlayerScreen(
                     playerContent()
                 }
             } else {
-                val sideText = uiState.videoNotes.orEmpty()
+                val sideText = uiState.videoNotes?.takeIf { it.isNotBlank() } ?: "No sidecar text found"
                 when (uiState.applicationPreferences?.sideTextPanelPosition) {
                     VideoTextPanelPosition.VIDEO_ABOVE_TEXT_BELOW -> {
                         Column(
