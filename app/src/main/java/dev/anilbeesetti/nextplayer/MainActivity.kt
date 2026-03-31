@@ -1,11 +1,14 @@
 package dev.anilbeesetti.nextplayer
 
 import android.graphics.Color
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.core.LinearEasing
@@ -18,8 +21,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -31,6 +36,8 @@ import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import dagger.hilt.android.AndroidEntryPoint
+import dev.anilbeesetti.nextplayer.core.common.getAllFilesAccessIntent
+import dev.anilbeesetti.nextplayer.core.common.isAllFilesAccessGranted
 import dev.anilbeesetti.nextplayer.core.common.storagePermission
 import dev.anilbeesetti.nextplayer.core.media.services.MediaService
 import dev.anilbeesetti.nextplayer.core.media.sync.MediaSynchronizer
@@ -102,14 +109,28 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.surface,
                 ) {
+                    val context = LocalContext.current
                     val storagePermissionState = rememberPermissionState(permission = storagePermission)
+                    val allFilesAccessGranted = remember { mutableStateOf(context.isAllFilesAccessGranted()) }
 
-                    LifecycleEventEffect(event = Lifecycle.Event.ON_START) {
-                        storagePermissionState.launchPermissionRequest()
+                    val allFilesPermissionLauncher = rememberLauncherForActivityResult(
+                        contract = ActivityResultContracts.StartActivityForResult()
+                    ) {
+                        allFilesAccessGranted.value = context.isAllFilesAccessGranted()
                     }
 
-                    LaunchedEffect(key1 = storagePermissionState.status.isGranted) {
-                        if (storagePermissionState.status.isGranted) {
+                    LifecycleEventEffect(event = Lifecycle.Event.ON_START) {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                            if (!context.isAllFilesAccessGranted()) {
+                                allFilesPermissionLauncher.launch(context.getAllFilesAccessIntent())
+                            }
+                        } else {
+                            storagePermissionState.launchPermissionRequest()
+                        }
+                    }
+
+                    LaunchedEffect(key1 = storagePermissionState.status.isGranted, key2 = allFilesAccessGranted.value) {
+                        if (storagePermissionState.status.isGranted || allFilesAccessGranted.value) {
                             synchronizer.startSync()
                         }
                     }
