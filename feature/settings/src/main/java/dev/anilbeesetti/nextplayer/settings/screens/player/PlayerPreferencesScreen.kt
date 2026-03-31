@@ -28,7 +28,6 @@ import dev.anilbeesetti.nextplayer.core.model.ControlButtonsPosition
 import dev.anilbeesetti.nextplayer.core.model.PlayerPreferences
 import dev.anilbeesetti.nextplayer.core.model.Resume
 import dev.anilbeesetti.nextplayer.core.model.ScreenOrientation
-import dev.anilbeesetti.nextplayer.core.model.VideoTextPanelPosition
 import dev.anilbeesetti.nextplayer.core.ui.R
 import dev.anilbeesetti.nextplayer.core.ui.components.ClickablePreferenceItem
 import dev.anilbeesetti.nextplayer.core.ui.components.ListSectionTitle
@@ -97,17 +96,8 @@ private fun PlayerPreferencesContent(
                     isChecked = uiState.applicationPreferences.showSideTextPanel,
                     onClick = { onEvent(PlayerPreferencesUiEvent.ToggleShowVideoTextPanel) },
                     isFirstItem = true,
-                    isLastItem = !uiState.applicationPreferences.showSideTextPanel,
+                    isLastItem = true,
                 )
-                if (uiState.applicationPreferences.showSideTextPanel) {
-                    ClickablePreferenceItem(
-                        title = stringResource(id = R.string.video_text_panel_position),
-                        description = uiState.applicationPreferences.sideTextPanelPosition.name(),
-                        icon = NextIcons.ButtonsPosition,
-                        onClick = { onEvent(PlayerPreferencesUiEvent.ShowDialog(PlayerPreferenceDialog.VideoTextPanelPositionDialog)) },
-                        isLastItem = true,
-                    )
-                }
             }
 
             ListSectionTitle(text = stringResource(id = R.string.interface_name))
@@ -281,23 +271,6 @@ private fun PlayerPreferencesContent(
                     }
                 }
 
-                PlayerPreferenceDialog.VideoTextPanelPositionDialog -> {
-                    OptionsDialog(
-                        text = stringResource(id = R.string.video_text_panel_position),
-                        onDismissClick = { onEvent(PlayerPreferencesUiEvent.ShowDialog(null)) },
-                    ) {
-                        items(VideoTextPanelPosition.entries.toTypedArray()) {
-                            RadioTextButton(
-                                text = it.name(),
-                                selected = it == uiState.applicationPreferences.sideTextPanelPosition,
-                                onClick = {
-                                    onEvent(PlayerPreferencesUiEvent.UpdateVideoTextPanelPosition(it))
-                                    onEvent(PlayerPreferencesUiEvent.ShowDialog(null))
-                                },
-                            )
-                        }
-                    }
-                }
             }
         }
     }

@@ -29,7 +29,6 @@ data class ApplicationPreferences(
 
     // Video Text Panel
     val showSideTextPanel: Boolean = false,
-    val sideTextPanelPosition: VideoTextPanelPosition = VideoTextPanelPosition.VIDEO_ABOVE_TEXT_BELOW,
 ) {
 
     companion object {
