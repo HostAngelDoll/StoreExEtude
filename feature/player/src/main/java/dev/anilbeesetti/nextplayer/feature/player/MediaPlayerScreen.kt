@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -47,6 +48,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -182,6 +185,11 @@ fun MediaPlayerScreen(
 
     var overlayView by remember { mutableStateOf<OverlayView?>(null) }
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    var showPanelLocal by remember(uiState.applicationPreferences?.showSideTextPanel) {
+        mutableStateOf(uiState.applicationPreferences?.showSideTextPanel == true)
+    }
+    var panelWidthFraction by remember { mutableStateOf(0.5f) }
+    var totalWidth by remember { mutableStateOf(0) }
 
     CompositionLocalProvider(LocalControlsVisibilityState provides controlsVisibilityState) {
         val playerContent = @Composable {
@@ -250,7 +258,9 @@ fun MediaPlayerScreen(
                                             controlsVisibilityState.hideControls()
                                             overlayView = OverlayView.PLAYLIST
                                         },
-                                        onNotesClick = null,
+                                        onNotesClick = {
+                                            showPanelLocal = !showPanelLocal
+                                        },
                                         onBackClick = onBackClick,
                                     )
                                 }
@@ -347,11 +357,12 @@ fun MediaPlayerScreen(
             }
         }
 
-        Box {
-            val showPanel = uiState.applicationPreferences?.showSideTextPanel == true
+        Box(
+            modifier = Modifier.onSizeChanged { totalWidth = it.width }
+        ) {
             val sideText = uiState.videoNotes?.takeIf { it.isNotBlank() } ?: "No sidecar text found"
 
-            if (!showPanel) {
+            if (!showPanelLocal) {
                 Box(
                     modifier = modifier
                         .fillMaxSize()
@@ -365,13 +376,29 @@ fun MediaPlayerScreen(
                         .fillMaxSize()
                         .background(Color.Black),
                 ) {
-                    Box(modifier = Modifier.weight(1f)) {
+                    Box(modifier = Modifier.weight(1f - panelWidthFraction)) {
                         playerContent()
                     }
 
                     Box(
                         modifier = Modifier
-                            .weight(1f)
+                            .fillMaxHeight()
+                            .size(width = 8.dp, height = 0.dp)
+                            .background(Color.Gray.copy(alpha = 0.4f))
+                            .pointerInput(totalWidth) {
+                                detectHorizontalDragGestures { change, dragAmount ->
+                                    change.consume()
+                                    if (totalWidth > 0) {
+                                        val deltaFraction = dragAmount / totalWidth
+                                        panelWidthFraction = (panelWidthFraction - deltaFraction).coerceIn(0.25f, 0.75f)
+                                    }
+                                }
+                            }
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .weight(panelWidthFraction)
                             .fillMaxHeight()
                             .background(Color.Black.copy(alpha = 0.6f))
                             .verticalScroll(rememberScrollState())

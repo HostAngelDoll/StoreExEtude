@@ -299,7 +299,7 @@
     <string name="material_you_controls">Controles Material You</string>
     <string name="material_you_controls_description">Utilizar el estilo Material You en los controles</string>
     <string name="video_text_panel">Panel de texto del vídeo</string>
-    <string name="show_video_text_panel">Mostrar panel de texto del vídeo</string>
-    <string name="show_video_text_panel_description">Mostrar un archivo de texto con el mismo nombre que el vídeo si existe en la misma carpeta</string>
+    <string name="show_video_text_panel">Mostrar panel de texto por defecto</string>
+    <string name="show_video_text_panel_description">Mostrar automáticamente el panel de texto lateral al iniciar la reproducción</string>
     <string name="no_notes_found">No se encontraron notas</string>
 </resources>

@@ -302,7 +302,7 @@
     <string name="material_you_controls">Material You controls</string>
     <string name="material_you_controls_description">Use material you style controls</string>
     <string name="video_text_panel">Video text panel</string>
-    <string name="show_video_text_panel">Show video text panel</string>
-    <string name="show_video_text_panel_description">Show a text file with the same name as the video if it exists in the same folder</string>
+    <string name="show_video_text_panel">Show video text panel by default</string>
+    <string name="show_video_text_panel_description">Automatically show the sidecar text panel when playback starts</string>
     <string name="no_notes_found">No notes found</string>
 </resources>
