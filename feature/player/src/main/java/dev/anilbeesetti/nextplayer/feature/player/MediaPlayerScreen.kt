@@ -4,6 +4,7 @@ import android.content.res.Configuration
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.annotation.OptIn
+import dev.anilbeesetti.nextplayer.core.model.ApplicationPreferences
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -48,7 +49,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.os.BatteryManager
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
@@ -96,6 +103,11 @@ import dev.anilbeesetti.nextplayer.feature.player.ui.SubtitleConfiguration
 import dev.anilbeesetti.nextplayer.feature.player.ui.VerticalProgressView
 import dev.anilbeesetti.nextplayer.feature.player.ui.controls.ControlsBottomView
 import dev.anilbeesetti.nextplayer.feature.player.ui.controls.ControlsTopView
+import dev.anilbeesetti.nextplayer.feature.player.extensions.formatted
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
+import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 val LocalControlsVisibilityState = compositionLocalOf<ControlsVisibilityState?> { null }
@@ -186,6 +198,27 @@ fun MediaPlayerScreen(
 
     var overlayView by remember { mutableStateOf<OverlayView?>(null) }
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val appPrefs = uiState.applicationPreferences ?: ApplicationPreferences()
+
+    var currentTime by remember { mutableStateOf(LocalTime.now()) }
+    var batteryLevel by remember { mutableStateOf(0) }
+    val context = LocalContext.current
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            currentTime = LocalTime.now()
+            val batteryStatus: Intent? = IntentFilter(Intent.ACTION_BATTERY_CHANGED).let { ifilter ->
+                context.registerReceiver(null, ifilter)
+            }
+            batteryLevel = batteryStatus?.let { intent ->
+                val level: Int = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
+                val scale: Int = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
+                (level * 100 / scale.toFloat()).toInt()
+            } ?: 0
+            delay(500)
+        }
+    }
+
     var showPanelLocal by remember(uiState.applicationPreferences?.showSideTextPanel) {
         mutableStateOf(uiState.applicationPreferences?.showSideTextPanel == true)
     }
@@ -217,6 +250,15 @@ fun MediaPlayerScreen(
                     mediaPresentationState = mediaPresentationState,
                     tapGestureState = tapGestureState,
                 )
+
+                if (appPrefs.showOSD) {
+                    PlayerOSDOverlay(
+                        appPrefs = appPrefs,
+                        mediaPresentationState = mediaPresentationState,
+                        batteryLevel = batteryLevel,
+                        currentTime = currentTime,
+                    )
+                }
 
                 Box(modifier = Modifier.fillMaxSize().displayCutoutPadding()) {
                     if (controlsVisibilityState.controlsVisible && controlsVisibilityState.controlsLocked) {
@@ -486,6 +528,85 @@ fun InfoView(
             color = Color.White,
             textAlign = TextAlign.Center,
         )
+    }
+}
+
+@Composable
+fun PlayerOSDOverlay(
+    appPrefs: ApplicationPreferences,
+    mediaPresentationState: dev.anilbeesetti.nextplayer.feature.player.state.MediaPresentationState,
+    batteryLevel: Int,
+    currentTime: LocalTime,
+) {
+    val configuration = LocalConfiguration.current
+    val marginPx = (appPrefs.osdMarginPercent / 100f) * configuration.screenWidthDp.dp.value
+    val marginDp = marginPx.dp
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .displayCutoutPadding()
+            .safeDrawingPadding()
+            .padding(marginDp)
+    ) {
+        val shadow = Shadow(
+            color = Color.Black.copy(alpha = 0.5f),
+            offset = Offset(2f, 2f),
+            blurRadius = 4f
+        )
+        val textStyle = MaterialTheme.typography.bodySmall.copy(
+            color = Color.White,
+            shadow = shadow,
+            fontWeight = FontWeight.Medium
+        )
+
+        Row(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Bottom
+        ) {
+            Row {
+                if (appPrefs.osdShowDuration) {
+                    Text(
+                        text = mediaPresentationState.position.milliseconds.formatted(),
+                        style = textStyle
+                    )
+                }
+                if (appPrefs.osdShowDuration && appPrefs.osdShowRemainingTime) {
+                    Text(
+                        text = " / ",
+                        style = textStyle
+                    )
+                }
+                if (appPrefs.osdShowRemainingTime) {
+                    val remaining = (mediaPresentationState.duration - mediaPresentationState.position).coerceAtLeast(0L)
+                    Text(
+                        text = "-${remaining.milliseconds.formatted()}",
+                        style = textStyle
+                    )
+                }
+            }
+
+            Row {
+                if (appPrefs.osdShowBattery) {
+                    Text(
+                        text = "$batteryLevel%",
+                        style = textStyle
+                    )
+                }
+                if (appPrefs.osdShowBattery && appPrefs.osdShowClock) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
+                if (appPrefs.osdShowClock) {
+                    Text(
+                        text = currentTime.format(DateTimeFormatter.ofPattern("HH:mm")),
+                        style = textStyle
+                    )
+                }
+            }
+        }
     }
 }
 

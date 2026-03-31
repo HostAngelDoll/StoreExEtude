@@ -305,4 +305,14 @@
     <string name="show_video_text_panel">Show video text panel by default</string>
     <string name="show_video_text_panel_description">Automatically show the sidecar text panel when playback starts</string>
     <string name="no_notes_found">No notes found</string>
+
+    <string name="player_osd">Player OSD</string>
+    <string name="show_player_osd">Show OSD</string>
+    <string name="show_player_osd_description">Show on-screen display with playback info</string>
+    <string name="show_osd_duration">Show duration</string>
+    <string name="show_osd_remaining_time">Show remaining time</string>
+    <string name="show_osd_battery">Show battery</string>
+    <string name="show_osd_clock">Show clock</string>
+    <string name="osd_margin">OSD margin</string>
+    <string name="osd_margin_description">%1$d%% margin</string>
 </resources>
