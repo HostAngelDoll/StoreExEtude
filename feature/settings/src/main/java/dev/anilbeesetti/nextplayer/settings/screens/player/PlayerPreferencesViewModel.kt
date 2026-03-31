@@ -7,10 +7,11 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.anilbeesetti.nextplayer.core.common.extensions.round
 import dev.anilbeesetti.nextplayer.core.data.repository.PreferencesRepository
 import dev.anilbeesetti.nextplayer.core.model.ControlButtonsPosition
+import dev.anilbeesetti.nextplayer.core.model.ApplicationPreferences
 import dev.anilbeesetti.nextplayer.core.model.PlayerPreferences
 import dev.anilbeesetti.nextplayer.core.model.Resume
 import dev.anilbeesetti.nextplayer.core.model.ScreenOrientation
-import dev.anilbeesetti.nextplayer.core.model.VideoNotesPosition
+import dev.anilbeesetti.nextplayer.core.model.VideoTextPanelPosition
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,6 +26,7 @@ class PlayerPreferencesViewModel @Inject constructor(
     private val uiStateInternal = MutableStateFlow(
         PlayerPreferencesUiState(
             preferences = preferencesRepository.playerPreferences.value,
+            applicationPreferences = preferencesRepository.applicationPreferences.value,
         ),
     )
     val uiState = uiStateInternal.asStateFlow()
@@ -33,6 +35,11 @@ class PlayerPreferencesViewModel @Inject constructor(
         viewModelScope.launch {
             preferencesRepository.playerPreferences.collect { preferences ->
                 uiStateInternal.update { it.copy(preferences = preferences) }
+            }
+        }
+        viewModelScope.launch {
+            preferencesRepository.applicationPreferences.collect { preferences ->
+                uiStateInternal.update { it.copy(applicationPreferences = preferences) }
             }
         }
     }
@@ -51,10 +58,8 @@ class PlayerPreferencesViewModel @Inject constructor(
             is PlayerPreferencesUiEvent.UpdateDefaultPlaybackSpeed -> updateDefaultPlaybackSpeed(event.value)
             is PlayerPreferencesUiEvent.UpdateControlAutoHideTimeout -> updateControlAutoHideTimeout(event.value)
             PlayerPreferencesUiEvent.ToggleUseMaterialYouControls -> toggleUseMaterialYouControls()
-            PlayerPreferencesUiEvent.ToggleShowVideoNotes -> toggleShowVideoNotes()
-            is PlayerPreferencesUiEvent.UpdatePreferredVideoNotesPosition -> updatePreferredVideoNotesPosition(event.value)
-            is PlayerPreferencesUiEvent.UpdateVideoNotesSizeLandscape -> updateVideoNotesSizeLandscape(event.value)
-            is PlayerPreferencesUiEvent.UpdateVideoNotesSizePortrait -> updateVideoNotesSizePortrait(event.value)
+            PlayerPreferencesUiEvent.ToggleShowVideoTextPanel -> toggleShowVideoTextPanel()
+            is PlayerPreferencesUiEvent.UpdateVideoTextPanelPosition -> updateVideoTextPanelPosition(event.value)
         }
     }
 
@@ -154,34 +159,18 @@ class PlayerPreferencesViewModel @Inject constructor(
         }
     }
 
-    private fun toggleShowVideoNotes() {
+    private fun toggleShowVideoTextPanel() {
         viewModelScope.launch {
-            preferencesRepository.updatePlayerPreferences {
-                it.copy(showVideoNotes = !it.showVideoNotes)
+            preferencesRepository.updateApplicationPreferences {
+                it.copy(showSideTextPanel = !it.showSideTextPanel)
             }
         }
     }
 
-    private fun updatePreferredVideoNotesPosition(value: VideoNotesPosition) {
+    private fun updateVideoTextPanelPosition(value: VideoTextPanelPosition) {
         viewModelScope.launch {
-            preferencesRepository.updatePlayerPreferences {
-                it.copy(videoNotesPosition = value)
-            }
-        }
-    }
-
-    private fun updateVideoNotesSizeLandscape(value: Float) {
-        viewModelScope.launch {
-            preferencesRepository.updatePlayerPreferences {
-                it.copy(videoNotesSizeLandscape = value.round(2))
-            }
-        }
-    }
-
-    private fun updateVideoNotesSizePortrait(value: Float) {
-        viewModelScope.launch {
-            preferencesRepository.updatePlayerPreferences {
-                it.copy(videoNotesSizePortrait = value.round(2))
+            preferencesRepository.updateApplicationPreferences {
+                it.copy(sideTextPanelPosition = value)
             }
         }
     }
@@ -191,13 +180,14 @@ class PlayerPreferencesViewModel @Inject constructor(
 data class PlayerPreferencesUiState(
     val showDialog: PlayerPreferenceDialog? = null,
     val preferences: PlayerPreferences = PlayerPreferences(),
+    val applicationPreferences: ApplicationPreferences = ApplicationPreferences(),
 )
 
 sealed interface PlayerPreferenceDialog {
     data object ResumeDialog : PlayerPreferenceDialog
     data object PlayerScreenOrientationDialog : PlayerPreferenceDialog
     data object ControlButtonsDialog : PlayerPreferenceDialog
-    data object VideoNotesPositionDialog : PlayerPreferenceDialog
+    data object VideoTextPanelPositionDialog : PlayerPreferenceDialog
 }
 
 sealed interface PlayerPreferencesUiEvent {
@@ -213,8 +203,6 @@ sealed interface PlayerPreferencesUiEvent {
     data class UpdateDefaultPlaybackSpeed(val value: Float) : PlayerPreferencesUiEvent
     data class UpdateControlAutoHideTimeout(val value: Int) : PlayerPreferencesUiEvent
     data object ToggleUseMaterialYouControls : PlayerPreferencesUiEvent
-    data object ToggleShowVideoNotes : PlayerPreferencesUiEvent
-    data class UpdatePreferredVideoNotesPosition(val value: VideoNotesPosition) : PlayerPreferencesUiEvent
-    data class UpdateVideoNotesSizeLandscape(val value: Float) : PlayerPreferencesUiEvent
-    data class UpdateVideoNotesSizePortrait(val value: Float) : PlayerPreferencesUiEvent
+    data object ToggleShowVideoTextPanel : PlayerPreferencesUiEvent
+    data class UpdateVideoTextPanelPosition(val value: VideoTextPanelPosition) : PlayerPreferencesUiEvent
 }

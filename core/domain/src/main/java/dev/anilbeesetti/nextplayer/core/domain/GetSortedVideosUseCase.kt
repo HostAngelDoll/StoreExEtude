@@ -48,8 +48,8 @@ class GetSortedVideosUseCase @Inject constructor(
                 val extensions = listOf("txt", "md")
 
                 // Try DocumentFile for content:// URIs
-                val uri = Uri.parse(video.uriString)
-                val doc = DocumentFile.fromSingleUri(context, uri)
+                val uri = runCatching { Uri.parse(video.uriString) }.getOrNull()
+                val doc = uri?.let { DocumentFile.fromSingleUri(context, it) }
                 val parent = doc?.parentFile
                 val baseName = doc?.name?.substringBeforeLast(".")
 

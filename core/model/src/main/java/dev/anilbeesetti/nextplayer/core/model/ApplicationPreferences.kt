@@ -26,6 +26,10 @@ data class ApplicationPreferences(
     // Thumbnail generation
     val thumbnailGenerationStrategy: ThumbnailGenerationStrategy = ThumbnailGenerationStrategy.FRAME_AT_PERCENTAGE,
     val thumbnailFramePosition: Float = DEFAULT_THUMBNAIL_FRAME_POSITION,
+
+    // Video Text Panel
+    val showSideTextPanel: Boolean = false,
+    val sideTextPanelPosition: VideoTextPanelPosition = VideoTextPanelPosition.VIDEO_ABOVE_TEXT_BELOW,
 ) {
 
     companion object {

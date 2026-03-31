@@ -36,10 +36,6 @@ data class PlayerPreferences(
     // Player Interface
     val controllerAutoHideTimeout: Int = DEFAULT_CONTROLLER_AUTO_HIDE_TIMEOUT,
     val controlButtonsPosition: ControlButtonsPosition = ControlButtonsPosition.LEFT,
-    val showVideoNotes: Boolean = true,
-    val videoNotesPosition: VideoNotesPosition = VideoNotesPosition.END,
-    val videoNotesSizeLandscape: Float = 0.3f,
-    val videoNotesSizePortrait: Float = 0.3f,
     val hidePlayerButtonsBackground: Boolean = false,
     val useMaterialYouControls: Boolean = false,
 
