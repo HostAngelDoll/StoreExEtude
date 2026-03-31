@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.displayCutoutPadding
@@ -383,7 +384,7 @@ fun MediaPlayerScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxHeight()
-                            .size(width = 8.dp, height = 0.dp)
+                            .width(8.dp)
                             .background(Color.Gray.copy(alpha = 0.4f))
                             .pointerInput(totalWidth) {
                                 detectHorizontalDragGestures { change, dragAmount ->
