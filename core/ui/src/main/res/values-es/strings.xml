@@ -301,8 +301,5 @@
     <string name="video_text_panel">Panel de texto del vídeo</string>
     <string name="show_video_text_panel">Mostrar panel de texto del vídeo</string>
     <string name="show_video_text_panel_description">Mostrar un archivo de texto con el mismo nombre que el vídeo si existe en la misma carpeta</string>
-    <string name="video_text_panel_position">Posición del panel</string>
-    <string name="video_text_panel_position_vertical">Arriba / Abajo</string>
-    <string name="video_text_panel_position_horizontal">Izquierda / Derecha</string>
     <string name="no_notes_found">No se encontraron notas</string>
 </resources>

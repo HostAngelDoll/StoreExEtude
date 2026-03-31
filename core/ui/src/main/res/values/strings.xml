@@ -304,8 +304,5 @@
     <string name="video_text_panel">Video text panel</string>
     <string name="show_video_text_panel">Show video text panel</string>
     <string name="show_video_text_panel_description">Show a text file with the same name as the video if it exists in the same folder</string>
-    <string name="video_text_panel_position">Panel position</string>
-    <string name="video_text_panel_position_vertical">Above / Below</string>
-    <string name="video_text_panel_position_horizontal">Left / Right</string>
     <string name="no_notes_found">No notes found</string>
 </resources>
