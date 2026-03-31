@@ -23,10 +23,10 @@
     <string name="navigate_up">Navigate up</string>
     <string name="no_videos_found">No videos found</string>
     <string name="open_settings">Open Settings</string>
-    <string name="permission_info">The Next Player app needs \"%1$s\" permission to access and play media. Without it, media access and playback won\'t work. To use the app fully, grant the permission.</string>
+    <string name="permission_info">The Next Player app needs access to your files to scan and play videos. Without it, the app won\'t work. Please grant the requested permission.</string>
     <string name="permission_not_granted">Permission Not Granted</string>
     <string name="permission_request">Permission Request</string>
-    <string name="permission_settings">The Next Player app needs \"%1$s\" permission to access and play media. Without it, media access and playback won\'t work. To use the app fully, grant the permission from settings since it was permanently denied.</string>
+    <string name="permission_settings">The Next Player app needs access to your files to scan and play videos. Please grant "All Files Access" in the system settings to continue.</string>
     <string name="player_controls_exit">Navigate up</string>
     <string name="player_controls_next">Player next</string>
     <string name="player_controls_play_pause">Player play pause</string>
@@ -302,10 +302,7 @@
     <string name="material_you_controls">Material You controls</string>
     <string name="material_you_controls_description">Use material you style controls</string>
     <string name="video_text_panel">Video text panel</string>
-    <string name="show_video_text_panel">Show video text panel</string>
-    <string name="show_video_text_panel_description">Show a text file with the same name as the video if it exists in the same folder</string>
-    <string name="video_text_panel_position">Panel position</string>
-    <string name="video_text_panel_position_vertical">Above / Below</string>
-    <string name="video_text_panel_position_horizontal">Left / Right</string>
+    <string name="show_video_text_panel">Show video text panel by default</string>
+    <string name="show_video_text_panel_description">Automatically show the sidecar text panel when playback starts</string>
     <string name="no_notes_found">No notes found</string>
 </resources>

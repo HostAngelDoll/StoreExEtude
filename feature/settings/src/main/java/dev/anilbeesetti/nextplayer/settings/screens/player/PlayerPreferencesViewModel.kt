@@ -11,7 +11,6 @@ import dev.anilbeesetti.nextplayer.core.model.ApplicationPreferences
 import dev.anilbeesetti.nextplayer.core.model.PlayerPreferences
 import dev.anilbeesetti.nextplayer.core.model.Resume
 import dev.anilbeesetti.nextplayer.core.model.ScreenOrientation
-import dev.anilbeesetti.nextplayer.core.model.VideoTextPanelPosition
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -59,7 +58,6 @@ class PlayerPreferencesViewModel @Inject constructor(
             is PlayerPreferencesUiEvent.UpdateControlAutoHideTimeout -> updateControlAutoHideTimeout(event.value)
             PlayerPreferencesUiEvent.ToggleUseMaterialYouControls -> toggleUseMaterialYouControls()
             PlayerPreferencesUiEvent.ToggleShowVideoTextPanel -> toggleShowVideoTextPanel()
-            is PlayerPreferencesUiEvent.UpdateVideoTextPanelPosition -> updateVideoTextPanelPosition(event.value)
         }
     }
 
@@ -166,14 +164,6 @@ class PlayerPreferencesViewModel @Inject constructor(
             }
         }
     }
-
-    private fun updateVideoTextPanelPosition(value: VideoTextPanelPosition) {
-        viewModelScope.launch {
-            preferencesRepository.updateApplicationPreferences {
-                it.copy(sideTextPanelPosition = value)
-            }
-        }
-    }
 }
 
 @Stable
@@ -187,7 +177,6 @@ sealed interface PlayerPreferenceDialog {
     data object ResumeDialog : PlayerPreferenceDialog
     data object PlayerScreenOrientationDialog : PlayerPreferenceDialog
     data object ControlButtonsDialog : PlayerPreferenceDialog
-    data object VideoTextPanelPositionDialog : PlayerPreferenceDialog
 }
 
 sealed interface PlayerPreferencesUiEvent {
@@ -204,5 +193,4 @@ sealed interface PlayerPreferencesUiEvent {
     data class UpdateControlAutoHideTimeout(val value: Int) : PlayerPreferencesUiEvent
     data object ToggleUseMaterialYouControls : PlayerPreferencesUiEvent
     data object ToggleShowVideoTextPanel : PlayerPreferencesUiEvent
-    data class UpdateVideoTextPanelPosition(val value: VideoTextPanelPosition) : PlayerPreferencesUiEvent
 }

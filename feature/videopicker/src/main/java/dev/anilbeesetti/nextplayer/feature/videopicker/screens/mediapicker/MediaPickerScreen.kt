@@ -74,6 +74,10 @@ import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import com.google.accompanist.permissions.shouldShowRationale
+import android.os.Build
+import androidx.compose.ui.platform.LocalContext
+import dev.anilbeesetti.nextplayer.core.common.getAllFilesAccessIntent
+import dev.anilbeesetti.nextplayer.core.common.isAllFilesAccessGranted
 import dev.anilbeesetti.nextplayer.core.common.storagePermission
 import dev.anilbeesetti.nextplayer.core.media.services.MediaService
 import dev.anilbeesetti.nextplayer.core.model.ApplicationPreferences
@@ -141,8 +145,17 @@ internal fun MediaPickerScreen(
     onEvent: (MediaPickerUiEvent) -> Unit = {},
 ) {
     val selectionManager = rememberSelectionManager()
+    val context = LocalContext.current
     val permissionState = rememberPermissionState(permission = storagePermission)
+    val allFilesAccessGranted = remember { mutableStateOf(context.isAllFilesAccessGranted()) }
     val lazyGridState = rememberLazyGridState()
+
+    val allFilesPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) {
+        allFilesAccessGranted.value = context.isAllFilesAccessGranted()
+    }
+
     val selectVideoFileLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent(),
         onResult = { it?.let { onPlayVideo(it) } },
@@ -378,7 +391,13 @@ internal fun MediaPickerScreen(
                         isGranted = permissionState.status.isGranted,
                         showRationale = permissionState.status.shouldShowRationale,
                         permission = permissionState.permission,
-                        launchPermissionRequest = { permissionState.launchPermissionRequest() },
+                        launchPermissionRequest = {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                                allFilesPermissionLauncher.launch(context.getAllFilesAccessIntent())
+                            } else {
+                                permissionState.launchPermissionRequest()
+                            }
+                        },
                     ) {
                         val rootFolder = uiState.mediaDataState.value
                         if (rootFolder == null || rootFolder.folderList.isEmpty() && rootFolder.mediaList.isEmpty()) {

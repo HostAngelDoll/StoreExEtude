@@ -1,8 +1,13 @@
 package dev.anilbeesetti.nextplayer.core.common
 
 import android.Manifest
+import android.content.Context
+import android.content.Intent
 import android.content.res.Resources
+import android.net.Uri
 import android.os.Build
+import android.os.Environment
+import android.provider.Settings
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 import kotlin.math.abs
@@ -11,6 +16,24 @@ val storagePermission = when {
     Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU -> Manifest.permission.READ_MEDIA_VIDEO
     Build.VERSION.SDK_INT >= Build.VERSION_CODES.R -> Manifest.permission.READ_EXTERNAL_STORAGE
     else -> Manifest.permission.WRITE_EXTERNAL_STORAGE
+}
+
+fun Context.isAllFilesAccessGranted(): Boolean {
+    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+        Environment.isExternalStorageManager()
+    } else {
+        false
+    }
+}
+
+fun Context.getAllFilesAccessIntent(): Intent {
+    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+        Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
+            data = Uri.fromParts("package", packageName, null)
+        }
+    } else {
+        Intent()
+    }
 }
 
 /**

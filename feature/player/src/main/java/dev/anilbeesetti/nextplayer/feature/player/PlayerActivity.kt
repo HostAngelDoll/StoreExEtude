@@ -189,6 +189,9 @@ class PlayerActivity : ComponentActivity() {
         if (returningFromBackground || isNewUriTheCurrentMediaItem) {
             mediaController?.prepare()
             mediaController?.playWhenReady = viewModel.playWhenReady
+            mediaController?.currentMediaItem?.localConfiguration?.uri?.let {
+                viewModel.loadVideoNotes(it, this@PlayerActivity)
+            }
             return
         }
 

@@ -17,8 +17,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.displayCutoutPadding
@@ -47,6 +49,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -62,7 +66,6 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import dev.anilbeesetti.nextplayer.core.model.ControlButtonsPosition
 import dev.anilbeesetti.nextplayer.core.model.PlayerPreferences
-import dev.anilbeesetti.nextplayer.core.model.VideoTextPanelPosition
 import dev.anilbeesetti.nextplayer.core.ui.R as coreUiR
 import dev.anilbeesetti.nextplayer.core.ui.extensions.copy
 import dev.anilbeesetti.nextplayer.feature.player.buttons.NextButton
@@ -183,6 +186,11 @@ fun MediaPlayerScreen(
 
     var overlayView by remember { mutableStateOf<OverlayView?>(null) }
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    var showPanelLocal by remember(uiState.applicationPreferences?.showSideTextPanel) {
+        mutableStateOf(uiState.applicationPreferences?.showSideTextPanel == true)
+    }
+    var panelWidthFraction by remember { mutableStateOf(0.5f) }
+    var totalWidth by remember { mutableStateOf(0) }
 
     CompositionLocalProvider(LocalControlsVisibilityState provides controlsVisibilityState) {
         val playerContent = @Composable {
@@ -209,16 +217,153 @@ fun MediaPlayerScreen(
                     mediaPresentationState = mediaPresentationState,
                     tapGestureState = tapGestureState,
                 )
+
+                Box(modifier = Modifier.fillMaxSize().displayCutoutPadding()) {
+                    if (controlsVisibilityState.controlsVisible && controlsVisibilityState.controlsLocked) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .safeDrawingPadding()
+                                .padding(top = 24.dp),
+                        ) {
+                            PlayerButton(onClick = { controlsVisibilityState.unlockControls() }) {
+                                Icon(
+                                    painter = painterResource(coreUiR.drawable.ic_lock),
+                                    contentDescription = stringResource(coreUiR.string.controls_unlock),
+                                )
+                            }
+                        }
+                    } else {
+                        PlayerControlsView(
+                            topView = {
+                                AnimatedVisibility(
+                                    visible = controlsVisibilityState.controlsVisible,
+                                    enter = fadeIn(),
+                                    exit = fadeOut(),
+                                ) {
+                                    ControlsTopView(
+                                        title = metadataState.title ?: "",
+                                        onAudioClick = {
+                                            controlsVisibilityState.hideControls()
+                                            overlayView = OverlayView.AUDIO_SELECTOR
+                                        },
+                                        onSubtitleClick = {
+                                            controlsVisibilityState.hideControls()
+                                            overlayView = OverlayView.SUBTITLE_SELECTOR
+                                        },
+                                        onPlaybackSpeedClick = {
+                                            controlsVisibilityState.hideControls()
+                                            overlayView = OverlayView.PLAYBACK_SPEED
+                                        },
+                                        onPlaylistClick = {
+                                            controlsVisibilityState.hideControls()
+                                            overlayView = OverlayView.PLAYLIST
+                                        },
+                                        onNotesClick = {
+                                            showPanelLocal = !showPanelLocal
+                                        },
+                                        onBackClick = onBackClick,
+                                    )
+                                }
+                            },
+                            middleView = {
+                                when {
+                                    seekGestureState.seekAmount != null -> InfoView(info = "${seekGestureState.seekAmountFormatted}\n[${seekGestureState.seekToPositionFormated}]")
+                                    videoZoomAndContentScaleState.isZooming -> InfoView(info = "${(videoZoomAndContentScaleState.zoom * 100).toInt()}%")
+                                    videoZoomAndContentScaleState.showContentScaleIndicator -> InfoView(info = stringResource(videoZoomAndContentScaleState.videoContentScale.nameRes()))
+                                    controlsVisibilityState.controlsVisible -> ControlsMiddleView(player = player)
+                                    else -> Unit
+                                }
+                            },
+                            bottomView = {
+                                AnimatedVisibility(
+                                    visible = controlsVisibilityState.controlsVisible && !controlsVisibilityState.controlsLocked,
+                                    enter = fadeIn(),
+                                    exit = fadeOut(),
+                                ) {
+                                    val context = LocalContext.current
+                                    ControlsBottomView(
+                                        player = player,
+                                        mediaPresentationState = mediaPresentationState,
+                                        controlsAlignment = when (playerPreferences.controlButtonsPosition) {
+                                            ControlButtonsPosition.LEFT -> Alignment.Start
+                                            ControlButtonsPosition.RIGHT -> Alignment.End
+                                        },
+                                        videoContentScale = videoZoomAndContentScaleState.videoContentScale,
+                                        isPipSupported = pictureInPictureState.isPipSupported,
+                                        onSeek = seekGestureState::onSeek,
+                                        onSeekEnd = seekGestureState::onSeekEnd,
+                                        onRotateClick = rotationState::rotate,
+                                        onPlayInBackgroundClick = onPlayInBackgroundClick,
+                                        onLockControlsClick = {
+                                            controlsVisibilityState.showControls()
+                                            controlsVisibilityState.lockControls()
+                                        },
+                                        onVideoContentScaleClick = {
+                                            controlsVisibilityState.showControls()
+                                            videoZoomAndContentScaleState.switchToNextVideoContentScale()
+                                        },
+                                        onVideoContentScaleLongClick = {
+                                            controlsVisibilityState.hideControls()
+                                            overlayView = OverlayView.VIDEO_CONTENT_SCALE
+                                        },
+                                        onPictureInPictureClick = {
+                                            if (!pictureInPictureState.hasPipPermission) {
+                                                Toast.makeText(context, coreUiR.string.enable_pip_from_settings, Toast.LENGTH_SHORT).show()
+                                                pictureInPictureState.openPictureInPictureSettings()
+                                            } else {
+                                                pictureInPictureState.enterPictureInPictureMode()
+                                            }
+                                        },
+                                    )
+                                }
+                            },
+                        )
+                    }
+
+                    val systemBarsPadding = WindowInsets.systemBars.asPaddingValues()
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .displayCutoutPadding()
+                            .padding(systemBarsPadding.copy(top = 0.dp, bottom = 0.dp))
+                            .padding(24.dp),
+                    ) {
+                        AnimatedVisibility(
+                            modifier = Modifier.align(Alignment.CenterStart),
+                            visible = volumeAndBrightnessGestureState.activeGesture == VerticalGesture.VOLUME,
+                            enter = fadeIn(),
+                            exit = fadeOut(),
+                        ) {
+                            VerticalProgressView(
+                                value = volumeState.volumePercentage,
+                                maxValue = volumeState.maxVolumePercentage,
+                                icon = painterResource(coreUiR.drawable.ic_volume),
+                            )
+                        }
+
+                        AnimatedVisibility(
+                            modifier = Modifier.align(Alignment.CenterEnd),
+                            visible = volumeAndBrightnessGestureState.activeGesture == VerticalGesture.BRIGHTNESS,
+                            enter = fadeIn(),
+                            exit = fadeOut(),
+                        ) {
+                            VerticalProgressView(
+                                value = brightnessState.brightnessPercentage,
+                                icon = painterResource(coreUiR.drawable.ic_brightness),
+                            )
+                        }
+                    }
+                }
             }
         }
 
-        Box {
-            val configuration = LocalConfiguration.current
-            val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
-            val showPanel = uiState.applicationPreferences?.showSideTextPanel == true
+        Box(
+            modifier = Modifier.onSizeChanged { totalWidth = it.width }
+        ) {
             val sideText = uiState.videoNotes?.takeIf { it.isNotBlank() } ?: "No sidecar text found"
 
-            if (!showPanel) {
+            if (!showPanelLocal) {
                 Box(
                     modifier = modifier
                         .fillMaxSize()
@@ -226,19 +371,35 @@ fun MediaPlayerScreen(
                 ) {
                     playerContent()
                 }
-            } else if (isLandscape) {
+            } else {
                 Row(
                     modifier = modifier
                         .fillMaxSize()
                         .background(Color.Black),
                 ) {
-                    Box(modifier = Modifier.weight(0.72f)) {
+                    Box(modifier = Modifier.weight(1f - panelWidthFraction)) {
                         playerContent()
                     }
 
                     Box(
                         modifier = Modifier
-                            .weight(0.28f)
+                            .fillMaxHeight()
+                            .width(8.dp)
+                            .background(Color.Gray.copy(alpha = 0.4f))
+                            .pointerInput(totalWidth) {
+                                detectHorizontalDragGestures { change, dragAmount ->
+                                    change.consume()
+                                    if (totalWidth > 0) {
+                                        val deltaFraction = dragAmount / totalWidth
+                                        panelWidthFraction = (panelWidthFraction - deltaFraction).coerceIn(0.25f, 0.75f)
+                                    }
+                                }
+                            }
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .weight(panelWidthFraction)
                             .fillMaxHeight()
                             .background(Color.Black.copy(alpha = 0.6f))
                             .verticalScroll(rememberScrollState())
@@ -251,209 +412,7 @@ fun MediaPlayerScreen(
                         )
                     }
                 }
-            } else {
-                when (uiState.applicationPreferences?.sideTextPanelPosition) {
-                    VideoTextPanelPosition.VIDEO_ABOVE_TEXT_BELOW -> {
-                        Column(
-                            modifier = modifier
-                                .fillMaxSize()
-                                .background(Color.Black),
-                        ) {
-                            Box(modifier = Modifier.weight(1f)) {
-                                playerContent()
-                            }
-
-                            Box(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .fillMaxWidth()
-                                    .background(Color.Black.copy(alpha = 0.6f))
-                                    .verticalScroll(rememberScrollState())
-                                    .padding(16.dp),
-                            ) {
-                                Text(
-                                    text = sideText,
-                                    color = Color.White,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                )
-                            }
-                        }
-                    }
-
-                    VideoTextPanelPosition.VIDEO_LEFT_TEXT_RIGHT -> {
-                        Row(
-                            modifier = modifier
-                                .fillMaxSize()
-                                .background(Color.Black),
-                        ) {
-                            Box(modifier = Modifier.weight(1f)) {
-                                playerContent()
-                            }
-
-                            Box(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .fillMaxHeight()
-                                    .background(Color.Black.copy(alpha = 0.6f))
-                                    .verticalScroll(rememberScrollState())
-                                    .padding(16.dp),
-                            ) {
-                                Text(
-                                    text = sideText,
-                                    color = Color.White,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                )
-                            }
-                        }
-                    }
-
-                    else -> {
-                        Box(
-                            modifier = modifier
-                                .fillMaxSize()
-                                .background(Color.Black),
-                        ) {
-                            playerContent()
-                        }
-                    }
-                }
             }
-            Box(modifier = Modifier.fillMaxSize().displayCutoutPadding()) {
-                if (controlsVisibilityState.controlsVisible && controlsVisibilityState.controlsLocked) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .safeDrawingPadding()
-                            .padding(top = 24.dp),
-                    ) {
-                        PlayerButton(onClick = { controlsVisibilityState.unlockControls() }) {
-                            Icon(
-                                painter = painterResource(coreUiR.drawable.ic_lock),
-                                contentDescription = stringResource(coreUiR.string.controls_unlock),
-                            )
-                        }
-                    }
-                } else {
-                    PlayerControlsView(
-                        topView = {
-                            AnimatedVisibility(
-                                visible = controlsVisibilityState.controlsVisible,
-                                enter = fadeIn(),
-                                exit = fadeOut(),
-                            ) {
-                                ControlsTopView(
-                                    title = metadataState.title ?: "",
-                                    onAudioClick = {
-                                        controlsVisibilityState.hideControls()
-                                        overlayView = OverlayView.AUDIO_SELECTOR
-                                    },
-                                    onSubtitleClick = {
-                                        controlsVisibilityState.hideControls()
-                                        overlayView = OverlayView.SUBTITLE_SELECTOR
-                                    },
-                                    onPlaybackSpeedClick = {
-                                        controlsVisibilityState.hideControls()
-                                        overlayView = OverlayView.PLAYBACK_SPEED
-                                    },
-                                    onPlaylistClick = {
-                                        controlsVisibilityState.hideControls()
-                                        overlayView = OverlayView.PLAYLIST
-                                    },
-                                    onNotesClick = null,
-                                    onBackClick = onBackClick,
-                                )
-                            }
-                        },
-                        middleView = {
-                            when {
-                                seekGestureState.seekAmount != null -> InfoView(info = "${seekGestureState.seekAmountFormatted}\n[${seekGestureState.seekToPositionFormated}]")
-                                videoZoomAndContentScaleState.isZooming -> InfoView(info = "${(videoZoomAndContentScaleState.zoom * 100).toInt()}%")
-                                videoZoomAndContentScaleState.showContentScaleIndicator -> InfoView(info = stringResource(videoZoomAndContentScaleState.videoContentScale.nameRes()))
-                                controlsVisibilityState.controlsVisible -> ControlsMiddleView(player = player)
-                                else -> Unit
-                            }
-                        },
-                        bottomView = {
-                            AnimatedVisibility(
-                                visible = controlsVisibilityState.controlsVisible && !controlsVisibilityState.controlsLocked,
-                                enter = fadeIn(),
-                                exit = fadeOut(),
-                            ) {
-                                val context = LocalContext.current
-                                ControlsBottomView(
-                                    player = player,
-                                    mediaPresentationState = mediaPresentationState,
-                                    controlsAlignment = when (playerPreferences.controlButtonsPosition) {
-                                        ControlButtonsPosition.LEFT -> Alignment.Start
-                                        ControlButtonsPosition.RIGHT -> Alignment.End
-                                    },
-                                    videoContentScale = videoZoomAndContentScaleState.videoContentScale,
-                                    isPipSupported = pictureInPictureState.isPipSupported,
-                                    onSeek = seekGestureState::onSeek,
-                                    onSeekEnd = seekGestureState::onSeekEnd,
-                                    onRotateClick = rotationState::rotate,
-                                    onPlayInBackgroundClick = onPlayInBackgroundClick,
-                                    onLockControlsClick = {
-                                        controlsVisibilityState.showControls()
-                                        controlsVisibilityState.lockControls()
-                                    },
-                                    onVideoContentScaleClick = {
-                                        controlsVisibilityState.showControls()
-                                        videoZoomAndContentScaleState.switchToNextVideoContentScale()
-                                    },
-                                    onVideoContentScaleLongClick = {
-                                        controlsVisibilityState.hideControls()
-                                        overlayView = OverlayView.VIDEO_CONTENT_SCALE
-                                    },
-                                    onPictureInPictureClick = {
-                                        if (!pictureInPictureState.hasPipPermission) {
-                                            Toast.makeText(context, coreUiR.string.enable_pip_from_settings, Toast.LENGTH_SHORT).show()
-                                            pictureInPictureState.openPictureInPictureSettings()
-                                        } else {
-                                            pictureInPictureState.enterPictureInPictureMode()
-                                        }
-                                    },
-                                )
-                            }
-                        },
-                    )
-                }
-
-                val systemBarsPadding = WindowInsets.systemBars.asPaddingValues()
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .displayCutoutPadding()
-                        .padding(systemBarsPadding.copy(top = 0.dp, bottom = 0.dp))
-                        .padding(24.dp),
-                ) {
-                    AnimatedVisibility(
-                        modifier = Modifier.align(Alignment.CenterStart),
-                        visible = volumeAndBrightnessGestureState.activeGesture == VerticalGesture.VOLUME,
-                        enter = fadeIn(),
-                        exit = fadeOut(),
-                    ) {
-                        VerticalProgressView(
-                            value = volumeState.volumePercentage,
-                            maxValue = volumeState.maxVolumePercentage,
-                            icon = painterResource(coreUiR.drawable.ic_volume),
-                        )
-                    }
-
-                    AnimatedVisibility(
-                        modifier = Modifier.align(Alignment.CenterEnd),
-                        visible = volumeAndBrightnessGestureState.activeGesture == VerticalGesture.BRIGHTNESS,
-                        enter = fadeIn(),
-                        exit = fadeOut(),
-                    ) {
-                        VerticalProgressView(
-                            value = brightnessState.brightnessPercentage,
-                            icon = painterResource(coreUiR.drawable.ic_brightness),
-                        )
-                    }
-                }
-            }
-
             OverlayShowView(
                 player = player,
                 overlayView = overlayView,
