@@ -3,13 +3,6 @@
 Next Player is an Android native video player written in Kotlin. It provides a simple and easy-to-use interface for users to play videos on their
 Android devices
 
-**This project is still in development and is expected to have bugs. Please report any bugs you find in
-the [Issues](https://github.com/anilbeesetti/nextplayer/issues) section.**
-
-[<img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" alt="Get it on Google Play" height="80"/>](https://play.google.com/store/apps/details?id=dev.anilbeesetti.nextplayer)
-[<img src="https://gitlab.com/IzzyOnDroid/repo/-/raw/master/assets/IzzyOnDroid.png" alt="Get it on IzzyOnDroid" height="80">](https://apt.izzysoft.de/fdroid/index/apk/dev.anilbeesetti.nextplayer)
-[<img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" alt="Get it on F-Droid" height="80">](https://f-droid.org/packages/dev.anilbeesetti.nextplayer/)
-
 ## Screenshots
 
 ### Media Picker
@@ -58,23 +51,6 @@ the [Issues](https://github.com/anilbeesetti/nextplayer/issues) section.**
 - Zoom gesture
 - Picture-in-picture mode
 
-## Planned Features
-
-- External Audio support
-- Background playback
-- Android TV version
-- Search Functionality
-
-## Contributing
-
-Contributions are welcome!
-
-### Translating
-
-You can help translate Next Player on [Hosted Weblate](https://hosted.weblate.org/engage/next-player/).
-
-[![Translate status](https://hosted.weblate.org/widgets/next-player/-/multi-auto.svg)](https://hosted.weblate.org/engage/next-player/)
-
 ## Credits
 
 ### Open Source Projects
@@ -84,11 +60,9 @@ You can help translate Next Player on [Hosted Weblate](https://hosted.weblate.or
 - [LibreTube](https://github.com/libre-tube/LibreTube)
 - [ReadYou](https://github.com/Ashinch/ReadYou)
 - [Seal](https://github.com/JunkFood02/Seal)
+- [NextPlayer](https://github.com/anilbeesetti/nextplayer)
 - ...
 
-### Special Thanks
-
-[<img src="https://hosted.weblate.org/widgets/next-player/-/287x66-white.png"  width="200"/>](https://hosted.weblate.org/engage/next-player/)
 
 Thanks to **Weblate** for providing free hosting for the project.
 
