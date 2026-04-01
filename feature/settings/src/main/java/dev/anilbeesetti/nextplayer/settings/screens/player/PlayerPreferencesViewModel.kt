@@ -64,6 +64,7 @@ class PlayerPreferencesViewModel @Inject constructor(
             PlayerPreferencesUiEvent.ToggleOsdShowBattery -> toggleOsdShowBattery()
             PlayerPreferencesUiEvent.ToggleOsdShowClock -> toggleOsdShowClock()
             is PlayerPreferencesUiEvent.UpdateOsdMarginPercent -> updateOsdMarginPercent(event.value)
+            PlayerPreferencesUiEvent.ToggleOsdShowBackground -> toggleOsdShowBackground()
         }
     }
 
@@ -218,6 +219,14 @@ class PlayerPreferencesViewModel @Inject constructor(
             }
         }
     }
+
+    private fun toggleOsdShowBackground() {
+        viewModelScope.launch {
+            preferencesRepository.updateApplicationPreferences {
+                it.copy(osdShowBackground = !it.osdShowBackground)
+            }
+        }
+    }
 }
 
 @Stable
@@ -253,4 +262,5 @@ sealed interface PlayerPreferencesUiEvent {
     data object ToggleOsdShowBattery : PlayerPreferencesUiEvent
     data object ToggleOsdShowClock : PlayerPreferencesUiEvent
     data class UpdateOsdMarginPercent(val value: Int) : PlayerPreferencesUiEvent
+    data object ToggleOsdShowBackground : PlayerPreferencesUiEvent
 }

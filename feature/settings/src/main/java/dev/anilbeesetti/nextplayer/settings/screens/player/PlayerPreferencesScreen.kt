@@ -138,6 +138,12 @@ private fun PlayerPreferencesContent(
                         isChecked = uiState.applicationPreferences.osdShowClock,
                         onClick = { onEvent(PlayerPreferencesUiEvent.ToggleOsdShowClock) },
                     )
+                    PreferenceSwitch(
+                        title = stringResource(id = R.string.show_osd_background),
+                        icon = NextIcons.Appearance,
+                        isChecked = uiState.applicationPreferences.osdShowBackground,
+                        onClick = { onEvent(PlayerPreferencesUiEvent.ToggleOsdShowBackground) },
+                    )
                     PreferenceSlider(
                         title = stringResource(id = R.string.osd_margin),
                         description = stringResource(

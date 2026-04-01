@@ -37,6 +37,7 @@ data class ApplicationPreferences(
     val osdShowBattery: Boolean = true,
     val osdShowClock: Boolean = true,
     val osdMarginPercent: Int = 2,
+    val osdShowBackground: Boolean = false,
 ) {
 
     companion object {

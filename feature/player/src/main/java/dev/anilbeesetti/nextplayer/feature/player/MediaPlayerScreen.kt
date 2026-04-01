@@ -22,6 +22,7 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.displayCutoutPadding
@@ -251,7 +252,11 @@ fun MediaPlayerScreen(
                     tapGestureState = tapGestureState,
                 )
 
-                if (appPrefs.showOSD) {
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = appPrefs.showOSD && !controlsVisibilityState.controlsVisible,
+                    enter = fadeIn(),
+                    exit = fadeOut(),
+                ) {
                     PlayerOSDOverlay(
                         appPrefs = appPrefs,
                         mediaPresentationState = mediaPresentationState,
@@ -544,6 +549,7 @@ fun PlayerOSDOverlay(
     currentTime: LocalTime,
 ) {
     val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     val marginPx = (appPrefs.osdMarginPercent / 100f) * configuration.screenWidthDp.dp.value
     val marginDp = marginPx.dp
 
@@ -552,7 +558,13 @@ fun PlayerOSDOverlay(
             .fillMaxSize()
             .displayCutoutPadding()
             .safeDrawingPadding()
-            .padding(marginDp)
+            .then(
+                if (isLandscape) {
+                    Modifier.padding(horizontal = marginDp)
+                } else {
+                    Modifier.padding(vertical = marginDp)
+                },
+            ),
     ) {
         val shadow = Shadow(
             color = Color.Black.copy(alpha = 0.5f),
@@ -564,6 +576,13 @@ fun PlayerOSDOverlay(
             shadow = shadow,
             fontWeight = FontWeight.Medium
         )
+        val backgroundModifier = if (appPrefs.osdShowBackground) {
+            Modifier
+                .background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(4.dp))
+                .padding(horizontal = 4.dp, vertical = 2.dp)
+        } else {
+            Modifier
+        }
 
         Row(
             modifier = Modifier
@@ -572,7 +591,7 @@ fun PlayerOSDOverlay(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.Bottom
         ) {
-            Row {
+            Row(modifier = backgroundModifier) {
                 if (appPrefs.osdShowDuration) {
                     Text(
                         text = mediaPresentationState.position.milliseconds.formatted(),
@@ -594,7 +613,7 @@ fun PlayerOSDOverlay(
                 }
             }
 
-            Row {
+            Row(modifier = backgroundModifier) {
                 if (appPrefs.osdShowBattery) {
                     Text(
                         text = "$batteryLevel%",

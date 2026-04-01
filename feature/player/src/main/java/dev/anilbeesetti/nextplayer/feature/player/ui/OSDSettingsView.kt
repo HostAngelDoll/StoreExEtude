@@ -71,6 +71,12 @@ fun BoxScope.OSDSettingsView(
                     isChecked = appPrefs.osdShowClock,
                     onClick = { viewModel.toggleOsdShowClock() },
                 )
+                PreferenceSwitch(
+                    title = stringResource(id = R.string.show_osd_background),
+                    icon = NextIcons.Appearance,
+                    isChecked = appPrefs.osdShowBackground,
+                    onClick = { viewModel.toggleOsdShowBackground() },
+                )
                 PreferenceSlider(
                     title = stringResource(id = R.string.osd_margin),
                     description = stringResource(

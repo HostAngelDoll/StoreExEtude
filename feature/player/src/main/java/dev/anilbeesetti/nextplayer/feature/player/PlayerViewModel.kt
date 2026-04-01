@@ -172,6 +172,14 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
+    fun toggleOsdShowBackground() {
+        viewModelScope.launch {
+            preferencesRepository.updateApplicationPreferences {
+                it.copy(osdShowBackground = !it.osdShowBackground)
+            }
+        }
+    }
+
 }
 
 @Stable
