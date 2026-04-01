@@ -156,10 +156,6 @@ private fun PlayerPreferencesContent(
                         onValueChange = { onEvent(PlayerPreferencesUiEvent.UpdateOsdMarginPercent(it.toInt())) },
                         isLastItem = true,
                     )
-                } else {
-                    // Just to make sure the first item has correct rounded corners if it's also the last visible item
-                    // But here it will be the last item if OSD is disabled.
-                    // Actually, PreferenceSwitch should handle it if I set isLastItem = true
                 }
             }
 

@@ -32,6 +32,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
@@ -201,25 +202,6 @@ fun MediaPlayerScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val appPrefs = uiState.applicationPreferences ?: ApplicationPreferences()
 
-    var currentTime by remember { mutableStateOf(LocalTime.now()) }
-    var batteryLevel by remember { mutableStateOf(0) }
-    val context = LocalContext.current
-
-    LaunchedEffect(Unit) {
-        while (true) {
-            currentTime = LocalTime.now()
-            val batteryStatus: Intent? = IntentFilter(Intent.ACTION_BATTERY_CHANGED).let { ifilter ->
-                context.registerReceiver(null, ifilter)
-            }
-            batteryLevel = batteryStatus?.let { intent ->
-                val level: Int = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
-                val scale: Int = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
-                (level * 100 / scale.toFloat()).toInt()
-            } ?: 0
-            delay(500)
-        }
-    }
-
     var showPanelLocal by remember(uiState.applicationPreferences?.showSideTextPanel) {
         mutableStateOf(uiState.applicationPreferences?.showSideTextPanel == true)
     }
@@ -260,8 +242,6 @@ fun MediaPlayerScreen(
                     PlayerOSDOverlay(
                         appPrefs = appPrefs,
                         mediaPresentationState = mediaPresentationState,
-                        batteryLevel = batteryLevel,
-                        currentTime = currentTime,
                     )
                 }
 
@@ -545,26 +525,35 @@ fun InfoView(
 fun PlayerOSDOverlay(
     appPrefs: ApplicationPreferences,
     mediaPresentationState: dev.anilbeesetti.nextplayer.feature.player.state.MediaPresentationState,
-    batteryLevel: Int,
-    currentTime: LocalTime,
 ) {
+    val context = LocalContext.current
+    var currentTime by remember { mutableStateOf(LocalTime.now()) }
+    var batteryLevel by remember { mutableStateOf(0) }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            currentTime = LocalTime.now()
+            val batteryStatus: Intent? = IntentFilter(Intent.ACTION_BATTERY_CHANGED).let { ifilter ->
+                context.registerReceiver(null, ifilter)
+            }
+            batteryLevel = batteryStatus?.let { intent ->
+                val level: Int = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
+                val scale: Int = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
+                (level * 100 / scale.toFloat()).toInt()
+            } ?: 0
+            delay(500)
+        }
+    }
+
     val configuration = LocalConfiguration.current
-    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     val marginPx = (appPrefs.osdMarginPercent / 100f) * configuration.screenWidthDp.dp.value
     val marginDp = marginPx.dp
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .displayCutoutPadding()
-            .safeDrawingPadding()
-            .then(
-                if (isLandscape) {
-                    Modifier.padding(horizontal = marginDp)
-                } else {
-                    Modifier.padding(vertical = marginDp)
-                },
-            ),
+            .windowInsetsPadding(WindowInsets.systemBars)
+            .padding(marginDp),
     ) {
         val shadow = Shadow(
             color = Color.Black.copy(alpha = 0.5f),
