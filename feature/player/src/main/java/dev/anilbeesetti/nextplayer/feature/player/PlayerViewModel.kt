@@ -124,6 +124,62 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
+    fun toggleShowOSD() {
+        viewModelScope.launch {
+            preferencesRepository.updateApplicationPreferences {
+                it.copy(showOSD = !it.showOSD)
+            }
+        }
+    }
+
+    fun toggleOsdShowDuration() {
+        viewModelScope.launch {
+            preferencesRepository.updateApplicationPreferences {
+                it.copy(osdShowDuration = !it.osdShowDuration)
+            }
+        }
+    }
+
+    fun toggleOsdShowRemainingTime() {
+        viewModelScope.launch {
+            preferencesRepository.updateApplicationPreferences {
+                it.copy(osdShowRemainingTime = !it.osdShowRemainingTime)
+            }
+        }
+    }
+
+    fun toggleOsdShowBattery() {
+        viewModelScope.launch {
+            preferencesRepository.updateApplicationPreferences {
+                it.copy(osdShowBattery = !it.osdShowBattery)
+            }
+        }
+    }
+
+    fun toggleOsdShowClock() {
+        viewModelScope.launch {
+            preferencesRepository.updateApplicationPreferences {
+                it.copy(osdShowClock = !it.osdShowClock)
+            }
+        }
+    }
+
+    fun updateOsdMarginPercent(value: Int) {
+        viewModelScope.launch {
+            preferencesRepository.updateApplicationPreferences {
+                it.copy(osdMarginPercent = value)
+            }
+        }
+    }
+
+    fun toggleOsdShowBackground() {
+        viewModelScope.launch {
+            preferencesRepository.updateApplicationPreferences {
+                it.copy(osdShowBackground = !it.osdShowBackground)
+            }
+        }
+    }
+
 }
 
 @Stable

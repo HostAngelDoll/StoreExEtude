@@ -4,6 +4,7 @@ import android.content.res.Configuration
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.annotation.OptIn
+import dev.anilbeesetti.nextplayer.core.model.ApplicationPreferences
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -21,6 +22,7 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.displayCutoutPadding
@@ -30,6 +32,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
@@ -48,7 +51,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.os.BatteryManager
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
@@ -96,6 +105,11 @@ import dev.anilbeesetti.nextplayer.feature.player.ui.SubtitleConfiguration
 import dev.anilbeesetti.nextplayer.feature.player.ui.VerticalProgressView
 import dev.anilbeesetti.nextplayer.feature.player.ui.controls.ControlsBottomView
 import dev.anilbeesetti.nextplayer.feature.player.ui.controls.ControlsTopView
+import dev.anilbeesetti.nextplayer.feature.player.extensions.formatted
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
+import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 val LocalControlsVisibilityState = compositionLocalOf<ControlsVisibilityState?> { null }
@@ -186,6 +200,8 @@ fun MediaPlayerScreen(
 
     var overlayView by remember { mutableStateOf<OverlayView?>(null) }
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val appPrefs = uiState.applicationPreferences ?: ApplicationPreferences()
+
     var showPanelLocal by remember(uiState.applicationPreferences?.showSideTextPanel) {
         mutableStateOf(uiState.applicationPreferences?.showSideTextPanel == true)
     }
@@ -217,6 +233,17 @@ fun MediaPlayerScreen(
                     mediaPresentationState = mediaPresentationState,
                     tapGestureState = tapGestureState,
                 )
+
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = appPrefs.showOSD && !controlsVisibilityState.controlsVisible,
+                    enter = fadeIn(),
+                    exit = fadeOut(),
+                ) {
+                    PlayerOSDOverlay(
+                        appPrefs = appPrefs,
+                        mediaPresentationState = mediaPresentationState,
+                    )
+                }
 
                 Box(modifier = Modifier.fillMaxSize().displayCutoutPadding()) {
                     if (controlsVisibilityState.controlsVisible && controlsVisibilityState.controlsLocked) {
@@ -258,6 +285,10 @@ fun MediaPlayerScreen(
                                         onPlaylistClick = {
                                             controlsVisibilityState.hideControls()
                                             overlayView = OverlayView.PLAYLIST
+                                        },
+                                        onOsdSettingsClick = {
+                                            controlsVisibilityState.hideControls()
+                                            overlayView = OverlayView.OSD_SETTINGS
                                         },
                                         onNotesClick = {
                                             showPanelLocal = !showPanelLocal
@@ -418,6 +449,7 @@ fun MediaPlayerScreen(
                 overlayView = overlayView,
                 videoContentScale = videoZoomAndContentScaleState.videoContentScale,
                 onDismiss = { overlayView = null },
+                viewModel = viewModel,
                 onSelectSubtitleClick = onSelectSubtitleClick,
                 onSubtitleOptionEvent = viewModel::onSubtitleOptionEvent,
                 onVideoContentScaleChanged = { videoZoomAndContentScaleState.onVideoContentScaleChanged(it) },
@@ -486,6 +518,115 @@ fun InfoView(
             color = Color.White,
             textAlign = TextAlign.Center,
         )
+    }
+}
+
+@Composable
+fun PlayerOSDOverlay(
+    appPrefs: ApplicationPreferences,
+    mediaPresentationState: dev.anilbeesetti.nextplayer.feature.player.state.MediaPresentationState,
+) {
+    val context = LocalContext.current
+    var currentTime by remember { mutableStateOf(LocalTime.now()) }
+    var batteryLevel by remember { mutableStateOf(0) }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            currentTime = LocalTime.now()
+            val batteryStatus: Intent? = IntentFilter(Intent.ACTION_BATTERY_CHANGED).let { ifilter ->
+                context.registerReceiver(null, ifilter)
+            }
+            batteryLevel = batteryStatus?.let { intent ->
+                val level: Int = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
+                val scale: Int = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
+                (level * 100 / scale.toFloat()).toInt()
+            } ?: 0
+            delay(500)
+        }
+    }
+
+    val configuration = LocalConfiguration.current
+    val marginPx = (appPrefs.osdMarginPercent / 100f) * configuration.screenWidthDp.dp.value
+    val marginDp = marginPx.dp
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .windowInsetsPadding(WindowInsets.systemBars)
+            .then(
+                if (isLandscape) {
+                    Modifier.padding(horizontal = marginDp)
+                } else {
+                    Modifier.padding(vertical = marginDp)
+                },
+            ),
+    ) {
+        val shadow = Shadow(
+            color = Color.Black.copy(alpha = 0.5f),
+            offset = Offset(2f, 2f),
+            blurRadius = 4f
+        )
+        val textStyle = MaterialTheme.typography.bodySmall.copy(
+            color = Color.White,
+            shadow = shadow,
+            fontWeight = FontWeight.Medium
+        )
+        val backgroundModifier = if (appPrefs.osdShowBackground) {
+            Modifier
+                .background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(4.dp))
+                .padding(horizontal = 4.dp, vertical = 2.dp)
+        } else {
+            Modifier
+        }
+
+        Row(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Bottom
+        ) {
+            Row(modifier = backgroundModifier) {
+                if (appPrefs.osdShowDuration) {
+                    Text(
+                        text = mediaPresentationState.position.milliseconds.formatted(),
+                        style = textStyle
+                    )
+                }
+                if (appPrefs.osdShowDuration && appPrefs.osdShowRemainingTime) {
+                    Text(
+                        text = " / ",
+                        style = textStyle
+                    )
+                }
+                if (appPrefs.osdShowRemainingTime) {
+                    val remaining = (mediaPresentationState.duration - mediaPresentationState.position).coerceAtLeast(0L)
+                    Text(
+                        text = "-${remaining.milliseconds.formatted()}",
+                        style = textStyle
+                    )
+                }
+            }
+
+            Row(modifier = backgroundModifier) {
+                if (appPrefs.osdShowBattery) {
+                    Text(
+                        text = "$batteryLevel%",
+                        style = textStyle
+                    )
+                }
+                if (appPrefs.osdShowBattery && appPrefs.osdShowClock) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
+                if (appPrefs.osdShowClock) {
+                    Text(
+                        text = currentTime.format(DateTimeFormatter.ofPattern("HH:mm")),
+                        style = textStyle
+                    )
+                }
+            }
+        }
     }
 }
 

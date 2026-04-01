@@ -29,6 +29,15 @@ data class ApplicationPreferences(
 
     // Video Text Panel
     val showSideTextPanel: Boolean = false,
+
+    // Player OSD
+    val showOSD: Boolean = false,
+    val osdShowDuration: Boolean = true,
+    val osdShowRemainingTime: Boolean = true,
+    val osdShowBattery: Boolean = true,
+    val osdShowClock: Boolean = true,
+    val osdMarginPercent: Int = 2,
+    val osdShowBackground: Boolean = false,
 ) {
 
     companion object {

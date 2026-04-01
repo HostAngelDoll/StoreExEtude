@@ -100,6 +100,68 @@ private fun PlayerPreferencesContent(
                 )
             }
 
+            ListSectionTitle(text = stringResource(id = R.string.player_osd))
+            Column(
+                verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
+            ) {
+                PreferenceSwitch(
+                    title = stringResource(id = R.string.show_player_osd),
+                    description = stringResource(id = R.string.show_player_osd_description),
+                    icon = NextIcons.Info,
+                    isChecked = uiState.applicationPreferences.showOSD,
+                    onClick = { onEvent(PlayerPreferencesUiEvent.ToggleShowOSD) },
+                    isFirstItem = true,
+                    isLastItem = !uiState.applicationPreferences.showOSD,
+                )
+                if (uiState.applicationPreferences.showOSD) {
+                    PreferenceSwitch(
+                        title = stringResource(id = R.string.show_osd_duration),
+                        icon = NextIcons.Timer,
+                        isChecked = uiState.applicationPreferences.osdShowDuration,
+                        onClick = { onEvent(PlayerPreferencesUiEvent.ToggleOsdShowDuration) },
+                    )
+                    PreferenceSwitch(
+                        title = stringResource(id = R.string.show_osd_remaining_time),
+                        icon = NextIcons.Timer,
+                        isChecked = uiState.applicationPreferences.osdShowRemainingTime,
+                        onClick = { onEvent(PlayerPreferencesUiEvent.ToggleOsdShowRemainingTime) },
+                    )
+                    PreferenceSwitch(
+                        title = stringResource(id = R.string.show_osd_battery),
+                        icon = NextIcons.Brightness,
+                        isChecked = uiState.applicationPreferences.osdShowBattery,
+                        onClick = { onEvent(PlayerPreferencesUiEvent.ToggleOsdShowBattery) },
+                    )
+                    PreferenceSwitch(
+                        title = stringResource(id = R.string.show_osd_clock),
+                        icon = NextIcons.Timer,
+                        isChecked = uiState.applicationPreferences.osdShowClock,
+                        onClick = { onEvent(PlayerPreferencesUiEvent.ToggleOsdShowClock) },
+                    )
+                    PreferenceSwitch(
+                        title = stringResource(id = R.string.show_osd_background),
+                        icon = NextIcons.Appearance,
+                        isChecked = uiState.applicationPreferences.osdShowBackground,
+                        onClick = { onEvent(PlayerPreferencesUiEvent.ToggleOsdShowBackground) },
+                    )
+                    PreferenceSlider(
+                        title = stringResource(id = R.string.osd_margin),
+                        description = stringResource(
+                            id = R.string.osd_margin_description,
+                            uiState.applicationPreferences.osdMarginPercent,
+                        ),
+                        icon = NextIcons.Size,
+                        value = uiState.applicationPreferences.osdMarginPercent.toFloat(),
+                        valueRange = 0f..20f,
+                        onValueChange = { onEvent(PlayerPreferencesUiEvent.UpdateOsdMarginPercent(it.toInt())) },
+                        isLastItem = true,
+                    )
+                }
+            }
+
+            // Update the master switch to be last item if OSD is disabled
+            // Let's refine the logic for isLastItem above.
+
             ListSectionTitle(text = stringResource(id = R.string.interface_name))
             Column(
                 verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),

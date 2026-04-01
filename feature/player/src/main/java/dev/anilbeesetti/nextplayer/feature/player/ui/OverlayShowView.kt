@@ -16,6 +16,7 @@ fun BoxScope.OverlayShowView(
     overlayView: OverlayView?,
     videoContentScale: VideoContentScale,
     onDismiss: () -> Unit = {},
+    viewModel: dev.anilbeesetti.nextplayer.feature.player.PlayerViewModel,
     onSelectSubtitleClick: () -> Unit = {},
     onSubtitleOptionEvent: (SubtitleOptionsEvent) -> Unit = {},
     onVideoContentScaleChanged: (VideoContentScale) -> Unit = {},
@@ -62,6 +63,11 @@ fun BoxScope.OverlayShowView(
         show = overlayView == OverlayView.PLAYLIST,
         player = player,
     )
+
+    OSDSettingsView(
+        show = overlayView == OverlayView.OSD_SETTINGS,
+        viewModel = viewModel,
+    )
 }
 
 val Configuration.isPortrait: Boolean
@@ -73,4 +79,5 @@ enum class OverlayView {
     PLAYBACK_SPEED,
     VIDEO_CONTENT_SCALE,
     PLAYLIST,
+    OSD_SETTINGS,
 }

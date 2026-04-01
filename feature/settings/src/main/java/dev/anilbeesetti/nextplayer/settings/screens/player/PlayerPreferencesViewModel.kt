@@ -58,6 +58,13 @@ class PlayerPreferencesViewModel @Inject constructor(
             is PlayerPreferencesUiEvent.UpdateControlAutoHideTimeout -> updateControlAutoHideTimeout(event.value)
             PlayerPreferencesUiEvent.ToggleUseMaterialYouControls -> toggleUseMaterialYouControls()
             PlayerPreferencesUiEvent.ToggleShowVideoTextPanel -> toggleShowVideoTextPanel()
+            PlayerPreferencesUiEvent.ToggleShowOSD -> toggleShowOSD()
+            PlayerPreferencesUiEvent.ToggleOsdShowDuration -> toggleOsdShowDuration()
+            PlayerPreferencesUiEvent.ToggleOsdShowRemainingTime -> toggleOsdShowRemainingTime()
+            PlayerPreferencesUiEvent.ToggleOsdShowBattery -> toggleOsdShowBattery()
+            PlayerPreferencesUiEvent.ToggleOsdShowClock -> toggleOsdShowClock()
+            is PlayerPreferencesUiEvent.UpdateOsdMarginPercent -> updateOsdMarginPercent(event.value)
+            PlayerPreferencesUiEvent.ToggleOsdShowBackground -> toggleOsdShowBackground()
         }
     }
 
@@ -164,6 +171,62 @@ class PlayerPreferencesViewModel @Inject constructor(
             }
         }
     }
+
+    private fun toggleShowOSD() {
+        viewModelScope.launch {
+            preferencesRepository.updateApplicationPreferences {
+                it.copy(showOSD = !it.showOSD)
+            }
+        }
+    }
+
+    private fun toggleOsdShowDuration() {
+        viewModelScope.launch {
+            preferencesRepository.updateApplicationPreferences {
+                it.copy(osdShowDuration = !it.osdShowDuration)
+            }
+        }
+    }
+
+    private fun toggleOsdShowRemainingTime() {
+        viewModelScope.launch {
+            preferencesRepository.updateApplicationPreferences {
+                it.copy(osdShowRemainingTime = !it.osdShowRemainingTime)
+            }
+        }
+    }
+
+    private fun toggleOsdShowBattery() {
+        viewModelScope.launch {
+            preferencesRepository.updateApplicationPreferences {
+                it.copy(osdShowBattery = !it.osdShowBattery)
+            }
+        }
+    }
+
+    private fun toggleOsdShowClock() {
+        viewModelScope.launch {
+            preferencesRepository.updateApplicationPreferences {
+                it.copy(osdShowClock = !it.osdShowClock)
+            }
+        }
+    }
+
+    private fun updateOsdMarginPercent(value: Int) {
+        viewModelScope.launch {
+            preferencesRepository.updateApplicationPreferences {
+                it.copy(osdMarginPercent = value)
+            }
+        }
+    }
+
+    private fun toggleOsdShowBackground() {
+        viewModelScope.launch {
+            preferencesRepository.updateApplicationPreferences {
+                it.copy(osdShowBackground = !it.osdShowBackground)
+            }
+        }
+    }
 }
 
 @Stable
@@ -193,4 +256,11 @@ sealed interface PlayerPreferencesUiEvent {
     data class UpdateControlAutoHideTimeout(val value: Int) : PlayerPreferencesUiEvent
     data object ToggleUseMaterialYouControls : PlayerPreferencesUiEvent
     data object ToggleShowVideoTextPanel : PlayerPreferencesUiEvent
+    data object ToggleShowOSD : PlayerPreferencesUiEvent
+    data object ToggleOsdShowDuration : PlayerPreferencesUiEvent
+    data object ToggleOsdShowRemainingTime : PlayerPreferencesUiEvent
+    data object ToggleOsdShowBattery : PlayerPreferencesUiEvent
+    data object ToggleOsdShowClock : PlayerPreferencesUiEvent
+    data class UpdateOsdMarginPercent(val value: Int) : PlayerPreferencesUiEvent
+    data object ToggleOsdShowBackground : PlayerPreferencesUiEvent
 }
