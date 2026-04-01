@@ -316,4 +316,6 @@
     <string name="osd_margin">OSD margin</string>
     <string name="osd_margin_description">%1$d%% margin</string>
     <string name="show_osd_background">OSD background</string>
+    <string name="picture_in_picture">Picture in Picture</string>
+    <string name="shuffle">Shuffle</string>
 </resources>

@@ -100,7 +100,7 @@ import dev.anilbeesetti.nextplayer.feature.player.state.seekAmountFormatted
 import dev.anilbeesetti.nextplayer.feature.player.state.seekToPositionFormated
 import dev.anilbeesetti.nextplayer.feature.player.ui.DoubleTapIndicator
 import dev.anilbeesetti.nextplayer.feature.player.ui.OverlayShowView
-import dev.anilbeesetti.nextplayer.feature.player.ui.OverlayView
+import dev.anilbeesetti.nextplayer.feature.player.ui.PlayerOverlay
 import dev.anilbeesetti.nextplayer.feature.player.ui.SubtitleConfiguration
 import dev.anilbeesetti.nextplayer.feature.player.ui.VerticalProgressView
 import dev.anilbeesetti.nextplayer.feature.player.ui.controls.ControlsBottomView
@@ -198,15 +198,21 @@ fun MediaPlayerScreen(
         }
     }
 
-    var overlayView by remember { mutableStateOf<OverlayView?>(null) }
+    var overlayView by remember { mutableStateOf<PlayerOverlay?>(null) }
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val appPrefs = uiState.applicationPreferences ?: ApplicationPreferences()
 
-    var showPanelLocal by remember(uiState.applicationPreferences?.showSideTextPanel) {
-        mutableStateOf(uiState.applicationPreferences?.showSideTextPanel == true)
+    var showPanelLocal by remember(uiState.applicationPreferences?.showSideTextPanel, uiState.videoNotes) {
+        mutableStateOf(uiState.applicationPreferences?.showSideTextPanel == true && !uiState.videoNotes.isNullOrBlank())
     }
-    var panelWidthFraction by remember { mutableStateOf(0.5f) }
-    var totalWidth by remember { mutableStateOf(0) }
+
+    var showNoNotesToast by remember { mutableStateOf(false) }
+    LaunchedEffect(showNoNotesToast) {
+        if (showNoNotesToast) {
+            delay(2000)
+            showNoNotesToast = false
+        }
+    }
 
     CompositionLocalProvider(LocalControlsVisibilityState provides controlsVisibilityState) {
         val playerContent = @Composable {
@@ -270,28 +276,16 @@ fun MediaPlayerScreen(
                                 ) {
                                     ControlsTopView(
                                         title = metadataState.title ?: "",
-                                        onAudioClick = {
-                                            controlsVisibilityState.hideControls()
-                                            overlayView = OverlayView.AUDIO_SELECTOR
-                                        },
-                                        onSubtitleClick = {
-                                            controlsVisibilityState.hideControls()
-                                            overlayView = OverlayView.SUBTITLE_SELECTOR
-                                        },
-                                        onPlaybackSpeedClick = {
-                                            controlsVisibilityState.hideControls()
-                                            overlayView = OverlayView.PLAYBACK_SPEED
-                                        },
-                                        onPlaylistClick = {
-                                            controlsVisibilityState.hideControls()
-                                            overlayView = OverlayView.PLAYLIST
-                                        },
-                                        onOsdSettingsClick = {
-                                            controlsVisibilityState.hideControls()
-                                            overlayView = OverlayView.OSD_SETTINGS
-                                        },
                                         onNotesClick = {
-                                            showPanelLocal = !showPanelLocal
+                                            if (uiState.videoNotes.isNullOrBlank()) {
+                                                showNoNotesToast = true
+                                            } else {
+                                                showPanelLocal = !showPanelLocal
+                                            }
+                                        },
+                                        onOverflowClick = {
+                                            controlsVisibilityState.hideControls()
+                                            overlayView = PlayerOverlay.OVERFLOW_MENU
                                         },
                                         onBackClick = onBackClick,
                                     )
@@ -336,7 +330,7 @@ fun MediaPlayerScreen(
                                         },
                                         onVideoContentScaleLongClick = {
                                             controlsVisibilityState.hideControls()
-                                            overlayView = OverlayView.VIDEO_CONTENT_SCALE
+                                            overlayView = PlayerOverlay.VIDEO_CONTENT_SCALE
                                         },
                                         onPictureInPictureClick = {
                                             if (!pictureInPictureState.hasPipPermission) {
@@ -389,61 +383,91 @@ fun MediaPlayerScreen(
             }
         }
 
-        Box(
-            modifier = Modifier.onSizeChanged { totalWidth = it.width }
-        ) {
-            val sideText = uiState.videoNotes?.takeIf { it.isNotBlank() } ?: "No sidecar text found"
+        Box(modifier = modifier.fillMaxSize()) {
+            val sideText = uiState.videoNotes ?: ""
+            val configuration = LocalConfiguration.current
+            val isPortrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT
 
             if (!showPanelLocal) {
                 Box(
-                    modifier = modifier
+                    modifier = Modifier
                         .fillMaxSize()
                         .background(Color.Black),
                 ) {
                     playerContent()
                 }
             } else {
-                Row(
-                    modifier = modifier
-                        .fillMaxSize()
-                        .background(Color.Black),
-                ) {
-                    Box(modifier = Modifier.weight(1f - panelWidthFraction)) {
-                        playerContent()
-                    }
-
-                    Box(
+                if (isPortrait) {
+                    Column(
                         modifier = Modifier
-                            .fillMaxHeight()
-                            .width(8.dp)
-                            .background(Color.Gray.copy(alpha = 0.4f))
-                            .pointerInput(totalWidth) {
-                                detectHorizontalDragGestures { change, dragAmount ->
-                                    change.consume()
-                                    if (totalWidth > 0) {
-                                        val deltaFraction = dragAmount / totalWidth
-                                        panelWidthFraction = (panelWidthFraction - deltaFraction).coerceIn(0.25f, 0.75f)
-                                    }
-                                }
-                            }
-                    )
-
-                    Box(
-                        modifier = Modifier
-                            .weight(panelWidthFraction)
-                            .fillMaxHeight()
-                            .background(Color.Black.copy(alpha = 0.6f))
-                            .verticalScroll(rememberScrollState())
-                            .padding(16.dp),
+                            .fillMaxSize()
+                            .background(Color.Black),
                     ) {
-                        Text(
-                            text = sideText,
-                            color = Color.White,
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
+                        Box(modifier = Modifier.weight(1f)) {
+                            playerContent()
+                        }
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxWidth()
+                                .background(Color.Black.copy(alpha = 0.6f))
+                                .verticalScroll(rememberScrollState())
+                                .padding(16.dp),
+                        ) {
+                            Text(
+                                text = sideText,
+                                color = Color.White,
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                        }
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Black),
+                    ) {
+                        Box(modifier = Modifier.weight(1f)) {
+                            playerContent()
+                        }
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .background(Color.Black.copy(alpha = 0.6f))
+                                .verticalScroll(rememberScrollState())
+                                .padding(16.dp),
+                        ) {
+                            Text(
+                                text = sideText,
+                                color = Color.White,
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                        }
                     }
                 }
             }
+
+            AnimatedVisibility(
+                visible = showNoNotesToast,
+                enter = fadeIn(),
+                exit = fadeOut(),
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 100.dp)
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(24.dp),
+                    color = Color.Black.copy(alpha = 0.8f),
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                ) {
+                    Text(
+                        text = stringResource(coreUiR.string.no_notes_found),
+                        color = Color.White,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
+                val context = LocalContext.current
             OverlayShowView(
                 player = player,
                 overlayView = overlayView,
@@ -453,6 +477,30 @@ fun MediaPlayerScreen(
                 onSelectSubtitleClick = onSelectSubtitleClick,
                 onSubtitleOptionEvent = viewModel::onSubtitleOptionEvent,
                 onVideoContentScaleChanged = { videoZoomAndContentScaleState.onVideoContentScaleChanged(it) },
+                onAudioClick = {
+                    overlayView = PlayerOverlay.AUDIO_SELECTOR
+                },
+                onSubtitleClick = {
+                    overlayView = PlayerOverlay.SUBTITLE_SELECTOR
+                },
+                onPlaybackSpeedClick = {
+                    overlayView = PlayerOverlay.PLAYBACK_SPEED
+                },
+                onPlaylistClick = {
+                    overlayView = PlayerOverlay.PLAYLIST
+                },
+                onOsdSettingsClick = {
+                    overlayView = PlayerOverlay.OSD_SETTINGS
+                },
+                onPictureInPictureClick = {
+                    if (!pictureInPictureState.hasPipPermission) {
+                        Toast.makeText(context, coreUiR.string.enable_pip_from_settings, Toast.LENGTH_SHORT).show()
+                        pictureInPictureState.openPictureInPictureSettings()
+                    } else {
+                        pictureInPictureState.enterPictureInPictureMode()
+                    }
+                },
+                onPlayInBackgroundClick = onPlayInBackgroundClick,
             )
         }
     }
