@@ -1,4 +1,4 @@
-# StoreExEtude
+# Next Player
 
 Next Player is an Android native video player written in Kotlin. It provides a simple and easy-to-use interface for users to play videos on their
 Android devices
