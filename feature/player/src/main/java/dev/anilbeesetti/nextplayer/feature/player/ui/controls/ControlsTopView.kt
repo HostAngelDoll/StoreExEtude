@@ -33,6 +33,7 @@ fun ControlsTopView(
     onSubtitleClick: () -> Unit = {},
     onPlaybackSpeedClick: () -> Unit = {},
     onPlaylistClick: () -> Unit = {},
+    onOsdSettingsClick: () -> Unit = {},
     onNotesClick: (() -> Unit)? = null,
     onBackClick: () -> Unit,
 ) {
@@ -71,6 +72,12 @@ fun ControlsTopView(
                         contentDescription = null,
                     )
                 }
+            }
+            PlayerButton(onClick = onOsdSettingsClick) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_info),
+                    contentDescription = null,
+                )
             }
             PlayerButton(onClick = onPlaylistClick) {
                 Icon(

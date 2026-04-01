@@ -301,6 +301,10 @@ fun MediaPlayerScreen(
                                             controlsVisibilityState.hideControls()
                                             overlayView = OverlayView.PLAYLIST
                                         },
+                                        onOsdSettingsClick = {
+                                            controlsVisibilityState.hideControls()
+                                            overlayView = OverlayView.OSD_SETTINGS
+                                        },
                                         onNotesClick = {
                                             showPanelLocal = !showPanelLocal
                                         },
@@ -460,6 +464,7 @@ fun MediaPlayerScreen(
                 overlayView = overlayView,
                 videoContentScale = videoZoomAndContentScaleState.videoContentScale,
                 onDismiss = { overlayView = null },
+                viewModel = viewModel,
                 onSelectSubtitleClick = onSelectSubtitleClick,
                 onSubtitleOptionEvent = viewModel::onSubtitleOptionEvent,
                 onVideoContentScaleChanged = { videoZoomAndContentScaleState.onVideoContentScaleChanged(it) },
