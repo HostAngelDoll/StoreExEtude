@@ -29,12 +29,8 @@ import dev.anilbeesetti.nextplayer.feature.player.buttons.PlayerButton
 fun ControlsTopView(
     modifier: Modifier = Modifier,
     title: String,
-    onAudioClick: () -> Unit = {},
-    onSubtitleClick: () -> Unit = {},
-    onPlaybackSpeedClick: () -> Unit = {},
-    onPlaylistClick: () -> Unit = {},
-    onOsdSettingsClick: () -> Unit = {},
     onNotesClick: (() -> Unit)? = null,
+    onOverflowClick: () -> Unit = {},
     onBackClick: () -> Unit,
 ) {
     val systemBarsPadding = WindowInsets.systemBars.union(WindowInsets.displayCutout).asPaddingValues()
@@ -68,38 +64,14 @@ fun ControlsTopView(
             if (onNotesClick != null) {
                 PlayerButton(onClick = onNotesClick) {
                     Icon(
-                        painter = painterResource(R.drawable.ic_info),
+                        painter = painterResource(R.drawable.ic_description),
                         contentDescription = null,
                     )
                 }
             }
-            PlayerButton(onClick = onOsdSettingsClick) {
+            PlayerButton(onClick = onOverflowClick) {
                 Icon(
-                    painter = painterResource(R.drawable.ic_info),
-                    contentDescription = null,
-                )
-            }
-            PlayerButton(onClick = onPlaylistClick) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_playlist),
-                    contentDescription = null,
-                )
-            }
-            PlayerButton(onClick = onPlaybackSpeedClick) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_speed),
-                    contentDescription = null,
-                )
-            }
-            PlayerButton(onClick = onAudioClick) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_audio_track),
-                    contentDescription = null,
-                )
-            }
-            PlayerButton(onClick = onSubtitleClick) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_subtitle_track),
+                    painter = painterResource(R.drawable.ic_more_vert),
                     contentDescription = null,
                 )
             }

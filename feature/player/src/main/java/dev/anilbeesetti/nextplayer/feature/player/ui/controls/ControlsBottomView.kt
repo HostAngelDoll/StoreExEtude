@@ -145,8 +145,7 @@ fun ControlsBottomView(
         )
         Row(
             modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
+                .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp, alignment = controlsAlignment),
         ) {
@@ -165,22 +164,6 @@ fun ControlsBottomView(
                     contentDescription = null,
                 )
             }
-            if (isPipSupported) {
-                PlayerButton(onClick = onPictureInPictureClick) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_pip),
-                        contentDescription = null,
-                    )
-                }
-            }
-            PlayerButton(onClick = onPlayInBackgroundClick) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_headset),
-                    contentDescription = null,
-                )
-            }
-            LoopButton(player = player)
-            ShuffleButton(player = player)
         }
     }
 }
