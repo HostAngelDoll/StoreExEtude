@@ -548,12 +548,19 @@ fun PlayerOSDOverlay(
     val configuration = LocalConfiguration.current
     val marginPx = (appPrefs.osdMarginPercent / 100f) * configuration.screenWidthDp.dp.value
     val marginDp = marginPx.dp
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .windowInsetsPadding(WindowInsets.systemBars)
-            .padding(marginDp),
+            .then(
+                if (isLandscape) {
+                    Modifier.padding(horizontal = marginDp)
+                } else {
+                    Modifier.padding(vertical = marginDp)
+                },
+            ),
     ) {
         val shadow = Shadow(
             color = Color.Black.copy(alpha = 0.5f),
