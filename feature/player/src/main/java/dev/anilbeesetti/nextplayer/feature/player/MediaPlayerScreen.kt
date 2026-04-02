@@ -51,8 +51,10 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -394,7 +396,9 @@ fun MediaPlayerScreen(
             val sideText = uiState.videoNotes ?: ""
             val configuration = LocalConfiguration.current
             val isPortrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT
-            val splitRatio = appPrefs.sideTextPanelSplitRatio
+            var localSplitRatio by rememberSaveable(appPrefs.sideTextPanelSplitRatio) {
+                mutableFloatStateOf(appPrefs.sideTextPanelSplitRatio)
+            }
             var containerSize by remember { mutableStateOf(IntSize.Zero) }
 
             if (!showPanelLocal) {
@@ -413,21 +417,23 @@ fun MediaPlayerScreen(
                             .background(Color.Black)
                             .onSizeChanged { containerSize = it },
                     ) {
-                        Box(modifier = Modifier.weight(splitRatio)) {
+                        Box(modifier = Modifier.weight(localSplitRatio)) {
                             playerContent()
                         }
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(8.dp)
+                                .height(24.dp)
                                 .pointerInput(Unit) {
-                                    detectVerticalDragGestures { change, dragAmount ->
-                                        change.consume()
-                                        if (containerSize.height > 0) {
-                                            val newRatio = appPrefs.sideTextPanelSplitRatio + dragAmount / containerSize.height
-                                            viewModel.updateSideTextPanelSplitRatio(newRatio)
+                                    detectVerticalDragGestures(
+                                        onDragEnd = { viewModel.updateSideTextPanelSplitRatio(localSplitRatio) },
+                                        onVerticalDrag = { change, dragAmount ->
+                                            change.consume()
+                                            if (containerSize.height > 0) {
+                                                localSplitRatio = (localSplitRatio + dragAmount / containerSize.height).coerceIn(0.25f, 0.75f)
+                                            }
                                         }
-                                    }
+                                    )
                                 },
                             contentAlignment = Alignment.Center
                         ) {
@@ -439,7 +445,7 @@ fun MediaPlayerScreen(
                         }
                         Box(
                             modifier = Modifier
-                                .weight(1f - splitRatio)
+                                .weight(1f - localSplitRatio)
                                 .fillMaxWidth()
                                 .background(Color.Black.copy(alpha = 0.6f))
                                 .verticalScroll(rememberScrollState())
@@ -459,21 +465,23 @@ fun MediaPlayerScreen(
                             .background(Color.Black)
                             .onSizeChanged { containerSize = it },
                     ) {
-                        Box(modifier = Modifier.weight(splitRatio)) {
+                        Box(modifier = Modifier.weight(localSplitRatio)) {
                             playerContent()
                         }
                         Box(
                             modifier = Modifier
                                 .fillMaxHeight()
-                                .width(8.dp)
+                                .width(24.dp)
                                 .pointerInput(Unit) {
-                                    detectHorizontalDragGestures { change, dragAmount ->
-                                        change.consume()
-                                        if (containerSize.width > 0) {
-                                            val newRatio = appPrefs.sideTextPanelSplitRatio + dragAmount / containerSize.width
-                                            viewModel.updateSideTextPanelSplitRatio(newRatio)
+                                    detectHorizontalDragGestures(
+                                        onDragEnd = { viewModel.updateSideTextPanelSplitRatio(localSplitRatio) },
+                                        onHorizontalDrag = { change, dragAmount ->
+                                            change.consume()
+                                            if (containerSize.width > 0) {
+                                                localSplitRatio = (localSplitRatio + dragAmount / containerSize.width).coerceIn(0.25f, 0.75f)
+                                            }
                                         }
-                                    }
+                                    )
                                 },
                             contentAlignment = Alignment.Center
                         ) {
@@ -485,7 +493,7 @@ fun MediaPlayerScreen(
                         }
                         Box(
                             modifier = Modifier
-                                .weight(1f - splitRatio)
+                                .weight(1f - localSplitRatio)
                                 .fillMaxHeight()
                                 .background(Color.Black.copy(alpha = 0.6f))
                                 .verticalScroll(rememberScrollState())
