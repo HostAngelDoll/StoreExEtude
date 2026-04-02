@@ -96,9 +96,11 @@ object TextSidecarResolver {
         context.contentResolver.query(videoUri, projection, null, null, null)?.use { cursor ->
             if (cursor.moveToFirst()) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    relativePath = cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Video.Media.RELATIVE_PATH))
+                    val index = cursor.getColumnIndex(MediaStore.Video.Media.RELATIVE_PATH)
+                    if (index != -1) relativePath = cursor.getString(index)
                 } else {
-                    data = cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATA))
+                    val index = cursor.getColumnIndex(MediaStore.Video.Media.DATA)
+                    if (index != -1) data = cursor.getString(index)
                 }
             }
         }
