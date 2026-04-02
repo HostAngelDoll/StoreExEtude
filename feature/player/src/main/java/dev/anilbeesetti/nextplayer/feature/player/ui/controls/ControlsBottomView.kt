@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import kotlin.time.Duration.Companion.milliseconds
 import dev.anilbeesetti.nextplayer.core.model.VideoContentScale
 import dev.anilbeesetti.nextplayer.core.ui.R
 import dev.anilbeesetti.nextplayer.core.ui.extensions.copy
@@ -60,6 +61,7 @@ import dev.anilbeesetti.nextplayer.feature.player.buttons.LoopButton
 import dev.anilbeesetti.nextplayer.feature.player.buttons.PlayerButton
 import dev.anilbeesetti.nextplayer.feature.player.buttons.ShuffleButton
 import dev.anilbeesetti.nextplayer.feature.player.extensions.drawableRes
+import dev.anilbeesetti.nextplayer.feature.player.extensions.formatted
 import dev.anilbeesetti.nextplayer.feature.player.extensions.noRippleClickable
 import dev.anilbeesetti.nextplayer.feature.player.state.MediaPresentationState
 import dev.anilbeesetti.nextplayer.feature.player.state.durationFormatted
@@ -83,6 +85,7 @@ fun ControlsBottomView(
     onPlayInBackgroundClick: () -> Unit,
     onSeek: (Long) -> Unit,
     onSeekEnd: () -> Unit,
+    showRotationButton: Boolean = true,
 ) {
     val systemBarsPadding = WindowInsets.systemBars.union(WindowInsets.displayCutout).asPaddingValues()
     Column(
@@ -93,56 +96,48 @@ fun ControlsBottomView(
             .padding(bottom = 16.dp.takeIf { systemBarsPadding.calculateBottomPadding() == 0.dp } ?: 0.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            var showPendingPosition by rememberSaveable { mutableStateOf(false) }
-
+        if (showRotationButton) {
             Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.noRippleClickable {
-                    showPendingPosition = !showPendingPosition
-                },
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                horizontalArrangement = Arrangement.End,
             ) {
-                Text(
-                    text = when (showPendingPosition) {
-                        true -> "-${mediaPresentationState.pendingPositionFormatted}"
-                        false -> mediaPresentationState.positionFormatted
-                    },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White,
-                )
-                Text(
-                    text = " / ",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White,
-                )
-                Text(
-                    text = mediaPresentationState.durationFormatted,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White,
-                )
-            }
-
-            Spacer(modifier = Modifier.weight(1f))
-            PlayerButton(
-                modifier = modifier.size(30.dp),
-                onClick = onRotateClick,
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_screen_rotation),
-                    contentDescription = null,
-                    modifier = Modifier.size(12.dp),
-                )
+                PlayerButton(
+                    modifier = modifier.size(30.dp),
+                    onClick = onRotateClick,
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_screen_rotation),
+                        contentDescription = null,
+                        modifier = Modifier.size(12.dp),
+                    )
+                }
             }
         }
-        PlayerSeekbar(
-            position = mediaPresentationState.position.toFloat(),
-            duration = mediaPresentationState.duration.toFloat(),
-            onSeek = { onSeek(it.toLong()) },
-            onSeekFinished = { onSeekEnd() },
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = mediaPresentationState.positionFormatted,
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.White,
+                modifier = Modifier.padding(end = 8.dp)
+            )
+            PlayerSeekbar(
+                modifier = Modifier.weight(1f),
+                position = mediaPresentationState.position.toFloat(),
+                duration = mediaPresentationState.duration.toFloat(),
+                onSeek = { onSeek(it.toLong()) },
+                onSeekFinished = { onSeekEnd() },
+            )
+            val remaining = (mediaPresentationState.duration - mediaPresentationState.position).coerceAtLeast(0L)
+            Text(
+                text = "-${remaining.milliseconds.formatted()}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.White,
+                modifier = Modifier.padding(start = 8.dp)
+            )
+        }
         Row(
             modifier = Modifier
                 .fillMaxWidth(),
