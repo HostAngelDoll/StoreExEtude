@@ -57,6 +57,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
@@ -74,6 +75,7 @@ import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import com.google.accompanist.permissions.shouldShowRationale
+import dev.anilbeesetti.nextplayer.core.common.isAllFilesAccessGranted
 import dev.anilbeesetti.nextplayer.core.common.storagePermission
 import dev.anilbeesetti.nextplayer.core.media.services.MediaService
 import dev.anilbeesetti.nextplayer.core.model.ApplicationPreferences
@@ -141,7 +143,14 @@ internal fun MediaPickerScreen(
     onEvent: (MediaPickerUiEvent) -> Unit = {},
 ) {
     val selectionManager = rememberSelectionManager()
+    val context = LocalContext.current
     val permissionState = rememberPermissionState(permission = storagePermission)
+    var manualPermissionCheck by remember { mutableStateOf(0) }
+    val hasMediaAccess by remember(permissionState.status.isGranted, manualPermissionCheck) {
+        derivedStateOf {
+            permissionState.status.isGranted || context.isAllFilesAccessGranted()
+        }
+    }
     val lazyGridState = rememberLazyGridState()
 
     val selectVideoFileLauncher = rememberLauncherForActivityResult(
@@ -376,13 +385,16 @@ internal fun MediaPickerScreen(
                 ) {
                     val updatedScaffoldPadding = scaffoldPadding.copy(top = 0.dp, start = 0.dp)
                     PermissionMissingView(
-                        isGranted = permissionState.status.isGranted,
+                        isGranted = hasMediaAccess,
                         showRationale = permissionState.status.shouldShowRationale,
                         permission = permissionState.permission,
                         launchPermissionRequest = {
                             permissionState.launchPermissionRequest()
                         },
                     ) {
+                        LaunchedEffect(Unit) {
+                            manualPermissionCheck++
+                        }
                         val rootFolder = uiState.mediaDataState.value
                         if (rootFolder == null || rootFolder.folderList.isEmpty() && rootFolder.mediaList.isEmpty()) {
                             NoVideosFound(contentPadding = updatedScaffoldPadding)

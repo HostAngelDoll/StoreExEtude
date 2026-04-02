@@ -17,11 +17,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -33,6 +35,7 @@ import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import dagger.hilt.android.AndroidEntryPoint
+import dev.anilbeesetti.nextplayer.core.common.isAllFilesAccessGranted
 import dev.anilbeesetti.nextplayer.core.common.storagePermission
 import dev.anilbeesetti.nextplayer.core.media.services.MediaService
 import dev.anilbeesetti.nextplayer.core.media.sync.MediaSynchronizer
@@ -104,14 +107,24 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.surface,
                 ) {
+                    val context = LocalContext.current
                     val storagePermissionState = rememberPermissionState(permission = storagePermission)
-
-                    LifecycleEventEffect(event = Lifecycle.Event.ON_START) {
-                        storagePermissionState.launchPermissionRequest()
+                    var manualPermissionCheck by remember { mutableStateOf(0) }
+                    val hasMediaAccess by remember(storagePermissionState.status.isGranted, manualPermissionCheck) {
+                        derivedStateOf {
+                            storagePermissionState.status.isGranted || context.isAllFilesAccessGranted()
+                        }
                     }
 
-                    LaunchedEffect(key1 = storagePermissionState.status.isGranted) {
-                        if (storagePermissionState.status.isGranted) {
+                    LifecycleEventEffect(event = Lifecycle.Event.ON_START) {
+                        manualPermissionCheck++
+                        if (!hasMediaAccess) {
+                            storagePermissionState.launchPermissionRequest()
+                        }
+                    }
+
+                    LaunchedEffect(key1 = hasMediaAccess) {
+                        if (hasMediaAccess) {
                             synchronizer.startSync()
                         }
                     }
