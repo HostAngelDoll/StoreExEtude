@@ -174,6 +174,12 @@ private fun PlayerPreferencesContent(
                     onClick = { onEvent(PlayerPreferencesUiEvent.ToggleUseMaterialYouControls) },
                     isFirstItem = true
                 )
+                PreferenceSwitch(
+                    title = stringResource(id = R.string.show_rotation_button),
+                    icon = NextIcons.Rotation,
+                    isChecked = uiState.preferences.showRotationButton,
+                    onClick = { onEvent(PlayerPreferencesUiEvent.ToggleShowRotationButton) },
+                )
                 PreferenceSlider(
                     title = stringResource(R.string.controller_timeout),
                     description = stringResource(R.string.seconds, uiState.preferences.controllerAutoHideTimeout),

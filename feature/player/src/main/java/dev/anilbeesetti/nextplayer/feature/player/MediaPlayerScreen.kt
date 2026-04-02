@@ -35,6 +35,9 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -319,6 +322,7 @@ fun MediaPlayerScreen(
                                         onSeek = seekGestureState::onSeek,
                                         onSeekEnd = seekGestureState::onSeekEnd,
                                         onRotateClick = rotationState::rotate,
+                                        showRotationButton = playerPreferences.showRotationButton,
                                         onPlayInBackgroundClick = onPlayInBackgroundClick,
                                         onLockControlsClick = {
                                             controlsVisibilityState.showControls()
@@ -577,6 +581,7 @@ fun PlayerOSDOverlay(
     val context = LocalContext.current
     var currentTime by remember { mutableStateOf(LocalTime.now()) }
     var batteryLevel by remember { mutableStateOf(0) }
+    var isCharging by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         while (true) {
@@ -589,6 +594,10 @@ fun PlayerOSDOverlay(
                 val scale: Int = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
                 (level * 100 / scale.toFloat()).toInt()
             } ?: 0
+            isCharging = batteryStatus?.let { intent ->
+                val status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
+                status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL
+            } ?: false
             delay(500)
         }
     }
@@ -657,8 +666,17 @@ fun PlayerOSDOverlay(
                 }
             }
 
-            Row(modifier = backgroundModifier) {
+            Row(modifier = backgroundModifier, verticalAlignment = Alignment.CenterVertically) {
                 if (appPrefs.osdShowBattery) {
+                    if (isCharging) {
+                        Icon(
+                            imageVector = Icons.Rounded.Bolt,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                    }
                     Text(
                         text = "$batteryLevel%",
                         style = textStyle
