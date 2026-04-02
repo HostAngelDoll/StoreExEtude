@@ -3,6 +3,7 @@ package dev.anilbeesetti.nextplayer.core.data.repository.fake
 import dev.anilbeesetti.nextplayer.core.data.repository.PreferencesRepository
 import dev.anilbeesetti.nextplayer.core.model.ApplicationPreferences
 import dev.anilbeesetti.nextplayer.core.model.PlayerPreferences
+import dev.anilbeesetti.nextplayer.core.model.SettingsBundle
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -32,5 +33,17 @@ class FakePreferencesRepository : PreferencesRepository {
     override suspend fun resetPreferences() {
         applicationPreferencesStateFlow.update { ApplicationPreferences() }
         playerPreferencesStateFlow.update { PlayerPreferences() }
+    }
+
+    override suspend fun getSettingsBundle(): SettingsBundle {
+        return SettingsBundle(
+            appPreferences = applicationPreferences.value,
+            playerPreferences = playerPreferences.value
+        )
+    }
+
+    override suspend fun importSettingsBundle(bundle: SettingsBundle) {
+        applicationPreferencesStateFlow.value = bundle.appPreferences
+        playerPreferencesStateFlow.value = bundle.playerPreferences
     }
 }

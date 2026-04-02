@@ -273,6 +273,13 @@
     <string name="reset_settings_description">Reset all settings to their default state</string>
     <string name="reset_settings_confirmation">Are you sure you want to reset all settings to their default state?</string>
     <string name="reset">Reset</string>
+    <string name="export_settings">Export settings</string>
+    <string name="export_settings_description">Save current settings to a file</string>
+    <string name="import_settings">Import settings</string>
+    <string name="import_settings_description">Load settings from a file</string>
+    <string name="import_settings_confirmation">All current settings will be replaced. This action cannot be undone.</string>
+    <string name="import_settings_error">Failed to import settings. Please ensure the file is valid.</string>
+    <string name="import_action">Import</string>
     <string name="delay">Delay</string>
     <string name="speed">Speed</string>
     <string name="search">Search</string>
