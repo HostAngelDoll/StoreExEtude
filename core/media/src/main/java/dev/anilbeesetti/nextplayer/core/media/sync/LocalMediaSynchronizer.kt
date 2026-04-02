@@ -239,7 +239,7 @@ class LocalMediaSynchronizer @Inject constructor(
                 )
             }
         }
-        return mediaVideos.filter { File(it.data).exists() }
+        return mediaVideos
     }
 
     companion object {
