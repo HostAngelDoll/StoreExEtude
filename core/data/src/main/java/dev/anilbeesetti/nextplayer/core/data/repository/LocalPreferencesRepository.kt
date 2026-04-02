@@ -5,6 +5,7 @@ import dev.anilbeesetti.nextplayer.core.datastore.datasource.AppPreferencesDataS
 import dev.anilbeesetti.nextplayer.core.datastore.datasource.PlayerPreferencesDataSource
 import dev.anilbeesetti.nextplayer.core.model.ApplicationPreferences
 import dev.anilbeesetti.nextplayer.core.model.PlayerPreferences
+import dev.anilbeesetti.nextplayer.core.model.SettingsBundle
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.SharingStarted
@@ -46,5 +47,17 @@ class LocalPreferencesRepository @Inject constructor(
     override suspend fun resetPreferences() {
         appPreferencesDataSource.update { ApplicationPreferences() }
         playerPreferencesDataSource.update { PlayerPreferences() }
+    }
+
+    override suspend fun getSettingsBundle(): SettingsBundle {
+        return SettingsBundle(
+            appPreferences = applicationPreferences.value,
+            playerPreferences = playerPreferences.value
+        )
+    }
+
+    override suspend fun importSettingsBundle(bundle: SettingsBundle) {
+        appPreferencesDataSource.update { bundle.appPreferences }
+        playerPreferencesDataSource.update { bundle.playerPreferences }
     }
 }

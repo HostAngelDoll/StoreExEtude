@@ -270,6 +270,13 @@
     <string name="reset_settings_description">Restablecer todos los ajustes a su estado predeterminado</string>
     <string name="reset_settings_confirmation">¿Estás seguro de que quieres restablecer todos los ajustes a su estado predeterminado?</string>
     <string name="reset">Reiniciar</string>
+    <string name="export_settings">Exportar ajustes</string>
+    <string name="export_settings_description">Guardar los ajustes actuales en un archivo</string>
+    <string name="import_settings">Importar ajustes</string>
+    <string name="import_settings_description">Cargar los ajustes desde un archivo</string>
+    <string name="import_settings_confirmation">Se reemplazarán todos los ajustes actuales. Esta acción no se puede deshacer.</string>
+    <string name="import_settings_error">Error al importar los ajustes. Por favor, asegúrese de que el archivo es válido.</string>
+    <string name="import_action">Importar</string>
     <string name="delay">Retraso</string>
     <string name="speed">Velocidad</string>
     <string name="search">Búsqueda</string>

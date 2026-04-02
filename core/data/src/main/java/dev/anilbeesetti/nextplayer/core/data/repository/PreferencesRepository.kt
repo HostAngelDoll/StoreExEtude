@@ -2,6 +2,7 @@ package dev.anilbeesetti.nextplayer.core.data.repository
 
 import dev.anilbeesetti.nextplayer.core.model.ApplicationPreferences
 import dev.anilbeesetti.nextplayer.core.model.PlayerPreferences
+import dev.anilbeesetti.nextplayer.core.model.SettingsBundle
 import kotlinx.coroutines.flow.StateFlow
 
 interface PreferencesRepository {
@@ -23,4 +24,8 @@ interface PreferencesRepository {
     suspend fun updatePlayerPreferences(transform: suspend (PlayerPreferences) -> PlayerPreferences)
 
     suspend fun resetPreferences()
+
+    suspend fun getSettingsBundle(): SettingsBundle
+
+    suspend fun importSettingsBundle(bundle: SettingsBundle)
 }
