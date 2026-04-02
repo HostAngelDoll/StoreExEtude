@@ -29,6 +29,7 @@ data class ApplicationPreferences(
 
     // Video Text Panel
     val showSideTextPanel: Boolean = false,
+    val sideTextPanelSplitRatio: Float = 0.5f,
 
     // Player OSD
     val showOSD: Boolean = false,

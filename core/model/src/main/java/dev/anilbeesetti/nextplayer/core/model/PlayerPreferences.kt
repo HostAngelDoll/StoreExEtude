@@ -39,6 +39,7 @@ data class PlayerPreferences(
     val hidePlayerButtonsBackground: Boolean = false,
     val useMaterialYouControls: Boolean = false,
     val showRotationButton: Boolean = true,
+    val showPrevNextButtons: Boolean = true,
 
     // Audio Preferences
     val preferredAudioLanguage: String = "",

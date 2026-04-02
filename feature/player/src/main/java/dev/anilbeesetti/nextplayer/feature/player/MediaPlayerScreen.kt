@@ -12,6 +12,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Box
@@ -19,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
@@ -63,6 +65,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -299,7 +302,6 @@ fun MediaPlayerScreen(
                                     seekGestureState.seekAmount != null -> InfoView(info = "${seekGestureState.seekAmountFormatted}\n[${seekGestureState.seekToPositionFormated}]")
                                     videoZoomAndContentScaleState.isZooming -> InfoView(info = "${(videoZoomAndContentScaleState.zoom * 100).toInt()}%")
                                     videoZoomAndContentScaleState.showContentScaleIndicator -> InfoView(info = stringResource(videoZoomAndContentScaleState.videoContentScale.nameRes()))
-                                    controlsVisibilityState.controlsVisible -> ControlsMiddleView(player = player)
                                     else -> Unit
                                 }
                             },
@@ -323,6 +325,7 @@ fun MediaPlayerScreen(
                                         onSeekEnd = seekGestureState::onSeekEnd,
                                         onRotateClick = rotationState::rotate,
                                         showRotationButton = playerPreferences.showRotationButton,
+                                        showPrevNextButtons = playerPreferences.showPrevNextButtons,
                                         onPlayInBackgroundClick = onPlayInBackgroundClick,
                                         onLockControlsClick = {
                                             controlsVisibilityState.showControls()
@@ -391,6 +394,8 @@ fun MediaPlayerScreen(
             val sideText = uiState.videoNotes ?: ""
             val configuration = LocalConfiguration.current
             val isPortrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+            val splitRatio = appPrefs.sideTextPanelSplitRatio
+            var containerSize by remember { mutableStateOf(IntSize.Zero) }
 
             if (!showPanelLocal) {
                 Box(
@@ -405,14 +410,36 @@ fun MediaPlayerScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(Color.Black),
+                            .background(Color.Black)
+                            .onSizeChanged { containerSize = it },
                     ) {
-                        Box(modifier = Modifier.weight(1f)) {
+                        Box(modifier = Modifier.weight(splitRatio)) {
                             playerContent()
                         }
                         Box(
                             modifier = Modifier
-                                .weight(1f)
+                                .fillMaxWidth()
+                                .height(8.dp)
+                                .pointerInput(Unit) {
+                                    detectVerticalDragGestures { change, dragAmount ->
+                                        change.consume()
+                                        if (containerSize.height > 0) {
+                                            val newRatio = appPrefs.sideTextPanelSplitRatio + dragAmount / containerSize.height
+                                            viewModel.updateSideTextPanelSplitRatio(newRatio)
+                                        }
+                                    }
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "⋯",
+                                color = Color.White.copy(alpha = 0.5f),
+                                style = MaterialTheme.typography.labelLarge
+                            )
+                        }
+                        Box(
+                            modifier = Modifier
+                                .weight(1f - splitRatio)
                                 .fillMaxWidth()
                                 .background(Color.Black.copy(alpha = 0.6f))
                                 .verticalScroll(rememberScrollState())
@@ -429,14 +456,36 @@ fun MediaPlayerScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(Color.Black),
+                            .background(Color.Black)
+                            .onSizeChanged { containerSize = it },
                     ) {
-                        Box(modifier = Modifier.weight(1f)) {
+                        Box(modifier = Modifier.weight(splitRatio)) {
                             playerContent()
                         }
                         Box(
                             modifier = Modifier
-                                .weight(1f)
+                                .fillMaxHeight()
+                                .width(8.dp)
+                                .pointerInput(Unit) {
+                                    detectHorizontalDragGestures { change, dragAmount ->
+                                        change.consume()
+                                        if (containerSize.width > 0) {
+                                            val newRatio = appPrefs.sideTextPanelSplitRatio + dragAmount / containerSize.width
+                                            viewModel.updateSideTextPanelSplitRatio(newRatio)
+                                        }
+                                    }
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "⋮",
+                                color = Color.White.copy(alpha = 0.5f),
+                                style = MaterialTheme.typography.labelLarge
+                            )
+                        }
+                        Box(
+                            modifier = Modifier
+                                .weight(1f - splitRatio)
                                 .fillMaxHeight()
                                 .background(Color.Black.copy(alpha = 0.6f))
                                 .verticalScroll(rememberScrollState())

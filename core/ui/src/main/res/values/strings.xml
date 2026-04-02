@@ -306,6 +306,7 @@
     <string name="show_video_text_panel_description">Automatically show the sidecar text panel when playback starts</string>
     <string name="no_notes_found">No notes found</string>
     <string name="show_rotation_button">Show rotation button</string>
+    <string name="show_prev_next_buttons">Show Previous/Next buttons</string>
 
     <string name="player_osd">Player OSD</string>
     <string name="show_player_osd">Show OSD</string>
