@@ -10,5 +10,5 @@ data class SettingsBundle(
     @SerialName("app_preferences")
     val appPreferences: ApplicationPreferences,
     @SerialName("player_preferences")
-    val playerPreferences: PlayerPreferences
+    val playerPreferences: PlayerPreferences,
 )
