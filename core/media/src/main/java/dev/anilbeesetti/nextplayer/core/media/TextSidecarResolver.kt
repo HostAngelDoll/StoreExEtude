@@ -27,27 +27,34 @@ object TextSidecarResolver {
         val baseName = resolveBaseName(context, videoUri) ?: return null
 
         // Strategy 1: Direct File access (if scheme is file or we have a valid path)
-        if (videoUri.scheme == ContentResolver.SCHEME_FILE) {
-            val path = videoUri.path
-            if (path != null) {
-                val resolved = resolveFromDirectory(File(path).parentFile, baseName)
+        val path = when (videoUri.scheme) {
+            ContentResolver.SCHEME_FILE -> videoUri.path
+            else -> context.getPath(videoUri)
+        }
+        if (path != null) {
+            val file = File(path)
+            if (file.exists() && file.canRead()) {
+                val resolved = resolveFromDirectory(file.parentFile, baseName)
                 if (resolved != null) return resolved
             }
         }
 
-        // Strategy 2: MediaStore (if scheme is content)
+        // Strategies for content:// URIs
         if (videoUri.scheme == ContentResolver.SCHEME_CONTENT) {
-            val resolved = resolveFromMediaStore(context, videoUri, baseName)
-            if (resolved != null) return resolved
+            // Strategy 2: MediaStore Directory Query
+            val resolvedDir = resolveFromMediaStore(context, videoUri, baseName)
+            if (resolvedDir != null) return resolvedDir
+
+            // Strategy 3: MediaStore Smart Lookup (Targeted by name)
+            val resolvedSmart = resolveFromMediaStoreSmartLookup(context, videoUri, baseName)
+            if (resolvedSmart != null) return resolvedSmart
+
+            // Strategy 4: SAF (DocumentFile)
+            val resolvedDoc = resolveFromDocumentFile(context, videoUri, baseName)
+            if (resolvedDoc != null) return resolvedDoc
         }
 
-        // Strategy 3: SAF (if it's a document URI or via user configured folders)
-        if (videoUri.scheme == ContentResolver.SCHEME_CONTENT) {
-            val resolved = resolveFromDocumentFile(context, videoUri, baseName)
-            if (resolved != null) return resolved
-        }
-
-        // Strategy 4: Fallback SAF hook (User configured folders)
+        // Strategy 5: User Configured SAF Folders
         val resolvedFromSaf = resolveFromUserConfiguredFolders(context, baseName)
         if (resolvedFromSaf != null) return resolvedFromSaf
 
@@ -84,26 +91,7 @@ object TextSidecarResolver {
     }
 
     private fun resolveFromMediaStore(context: Context, videoUri: Uri, baseName: String): String? {
-        val projection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            arrayOf(MediaStore.Video.Media.RELATIVE_PATH, MediaStore.Video.Media.DISPLAY_NAME)
-        } else {
-            arrayOf(MediaStore.Video.Media.DATA, MediaStore.Video.Media.DISPLAY_NAME)
-        }
-
-        var relativePath: String? = null
-        var data: String? = null
-
-        context.contentResolver.query(videoUri, projection, null, null, null)?.use { cursor ->
-            if (cursor.moveToFirst()) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    val index = cursor.getColumnIndex(MediaStore.Video.Media.RELATIVE_PATH)
-                    if (index != -1) relativePath = cursor.getString(index)
-                } else {
-                    val index = cursor.getColumnIndex(MediaStore.Video.Media.DATA)
-                    if (index != -1) data = cursor.getString(index)
-                }
-            }
-        }
+        val (relativePath, data) = getMediaStorePaths(context, videoUri)
 
         val externalFilesUri = MediaStore.Files.getContentUri("external")
         val filesProjection = arrayOf(MediaStore.Files.FileColumns._ID, MediaStore.Files.FileColumns.DISPLAY_NAME)
@@ -137,6 +125,71 @@ object TextSidecarResolver {
         }
 
         return null
+    }
+
+    /**
+     * Targeted exact name query for sidecars.
+     * This is more reliable than broad directory listing in some MediaStore implementations.
+     */
+    private fun resolveFromMediaStoreSmartLookup(context: Context, videoUri: Uri, baseName: String): String? {
+        val (relativePath, data) = getMediaStorePaths(context, videoUri)
+        if (relativePath == null && data == null) return null
+
+        val externalFilesUri = MediaStore.Files.getContentUri("external")
+        val filesProjection = arrayOf(MediaStore.Files.FileColumns._ID, MediaStore.Files.FileColumns.DISPLAY_NAME)
+
+        for (ext in sidecarExtensions) {
+            val targetName = "$baseName.$ext"
+
+            val selection: String
+            val selectionArgs: Array<String>
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                if (relativePath == null) continue
+                selection = "${MediaStore.Files.FileColumns.RELATIVE_PATH} = ? AND ${MediaStore.Files.FileColumns.DISPLAY_NAME} = ?"
+                selectionArgs = arrayOf(relativePath, targetName)
+            } else {
+                val parentPath = data?.let { File(it).parent } ?: continue
+                val targetPath = "$parentPath/$targetName"
+                selection = "${MediaStore.Files.FileColumns.DATA} = ?"
+                selectionArgs = arrayOf(targetPath)
+            }
+
+            context.contentResolver.query(externalFilesUri, filesProjection, selection, selectionArgs, null)?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID)
+                    val id = cursor.getLong(idColumn)
+                    val contentUri = MediaStore.Files.getContentUri("external", id)
+                    return readText(context, contentUri)
+                }
+            }
+        }
+
+        return null
+    }
+
+    private fun getMediaStorePaths(context: Context, videoUri: Uri): Pair<String?, String?> {
+        val projection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            arrayOf(MediaStore.Video.Media.RELATIVE_PATH, MediaStore.Video.Media.DISPLAY_NAME)
+        } else {
+            arrayOf(MediaStore.Video.Media.DATA, MediaStore.Video.Media.DISPLAY_NAME)
+        }
+
+        var relativePath: String? = null
+        var data: String? = null
+
+        context.contentResolver.query(videoUri, projection, null, null, null)?.use { cursor ->
+            if (cursor.moveToFirst()) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    val index = cursor.getColumnIndex(MediaStore.Video.Media.RELATIVE_PATH)
+                    if (index != -1) relativePath = cursor.getString(index)
+                } else {
+                    val index = cursor.getColumnIndex(MediaStore.Video.Media.DATA)
+                    if (index != -1) data = cursor.getString(index)
+                }
+            }
+        }
+        return Pair(relativePath, data)
     }
 
     private fun resolveFromDocumentFile(context: Context, videoUri: Uri, baseName: String): String? {
