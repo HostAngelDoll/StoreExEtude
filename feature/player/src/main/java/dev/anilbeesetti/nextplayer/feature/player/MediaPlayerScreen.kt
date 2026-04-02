@@ -12,6 +12,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Box
@@ -19,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
@@ -49,8 +51,10 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -63,6 +67,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -299,7 +304,6 @@ fun MediaPlayerScreen(
                                     seekGestureState.seekAmount != null -> InfoView(info = "${seekGestureState.seekAmountFormatted}\n[${seekGestureState.seekToPositionFormated}]")
                                     videoZoomAndContentScaleState.isZooming -> InfoView(info = "${(videoZoomAndContentScaleState.zoom * 100).toInt()}%")
                                     videoZoomAndContentScaleState.showContentScaleIndicator -> InfoView(info = stringResource(videoZoomAndContentScaleState.videoContentScale.nameRes()))
-                                    controlsVisibilityState.controlsVisible -> ControlsMiddleView(player = player)
                                     else -> Unit
                                 }
                             },
@@ -323,6 +327,7 @@ fun MediaPlayerScreen(
                                         onSeekEnd = seekGestureState::onSeekEnd,
                                         onRotateClick = rotationState::rotate,
                                         showRotationButton = playerPreferences.showRotationButton,
+                                        showPrevNextButtons = playerPreferences.showPrevNextButtons,
                                         onPlayInBackgroundClick = onPlayInBackgroundClick,
                                         onLockControlsClick = {
                                             controlsVisibilityState.showControls()
@@ -391,6 +396,10 @@ fun MediaPlayerScreen(
             val sideText = uiState.videoNotes ?: ""
             val configuration = LocalConfiguration.current
             val isPortrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+            var localSplitRatio by rememberSaveable(appPrefs.sideTextPanelSplitRatio) {
+                mutableFloatStateOf(appPrefs.sideTextPanelSplitRatio)
+            }
+            var containerSize by remember { mutableStateOf(IntSize.Zero) }
 
             if (!showPanelLocal) {
                 Box(
@@ -405,14 +414,38 @@ fun MediaPlayerScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(Color.Black),
+                            .background(Color.Black)
+                            .onSizeChanged { containerSize = it },
                     ) {
-                        Box(modifier = Modifier.weight(1f)) {
+                        Box(modifier = Modifier.weight(localSplitRatio)) {
                             playerContent()
                         }
                         Box(
                             modifier = Modifier
-                                .weight(1f)
+                                .fillMaxWidth()
+                                .height(24.dp)
+                                .pointerInput(Unit) {
+                                    detectVerticalDragGestures(
+                                        onDragEnd = { viewModel.updateSideTextPanelSplitRatio(localSplitRatio) },
+                                        onVerticalDrag = { change, dragAmount ->
+                                            change.consume()
+                                            if (containerSize.height > 0) {
+                                                localSplitRatio = (localSplitRatio + dragAmount / containerSize.height).coerceIn(0.25f, 0.75f)
+                                            }
+                                        }
+                                    )
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "⋯",
+                                color = Color.White.copy(alpha = 0.5f),
+                                style = MaterialTheme.typography.labelLarge
+                            )
+                        }
+                        Box(
+                            modifier = Modifier
+                                .weight(1f - localSplitRatio)
                                 .fillMaxWidth()
                                 .background(Color.Black.copy(alpha = 0.6f))
                                 .verticalScroll(rememberScrollState())
@@ -429,14 +462,38 @@ fun MediaPlayerScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(Color.Black),
+                            .background(Color.Black)
+                            .onSizeChanged { containerSize = it },
                     ) {
-                        Box(modifier = Modifier.weight(1f)) {
+                        Box(modifier = Modifier.weight(localSplitRatio)) {
                             playerContent()
                         }
                         Box(
                             modifier = Modifier
-                                .weight(1f)
+                                .fillMaxHeight()
+                                .width(24.dp)
+                                .pointerInput(Unit) {
+                                    detectHorizontalDragGestures(
+                                        onDragEnd = { viewModel.updateSideTextPanelSplitRatio(localSplitRatio) },
+                                        onHorizontalDrag = { change, dragAmount ->
+                                            change.consume()
+                                            if (containerSize.width > 0) {
+                                                localSplitRatio = (localSplitRatio + dragAmount / containerSize.width).coerceIn(0.25f, 0.75f)
+                                            }
+                                        }
+                                    )
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "⋮",
+                                color = Color.White.copy(alpha = 0.5f),
+                                style = MaterialTheme.typography.labelLarge
+                            )
+                        }
+                        Box(
+                            modifier = Modifier
+                                .weight(1f - localSplitRatio)
                                 .fillMaxHeight()
                                 .background(Color.Black.copy(alpha = 0.6f))
                                 .verticalScroll(rememberScrollState())

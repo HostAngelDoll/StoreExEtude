@@ -180,6 +180,12 @@ private fun PlayerPreferencesContent(
                     isChecked = uiState.preferences.showRotationButton,
                     onClick = { onEvent(PlayerPreferencesUiEvent.ToggleShowRotationButton) },
                 )
+                PreferenceSwitch(
+                    title = stringResource(id = R.string.show_prev_next_buttons),
+                    icon = NextIcons.Player,
+                    isChecked = uiState.preferences.showPrevNextButtons,
+                    onClick = { onEvent(PlayerPreferencesUiEvent.ToggleShowPrevNextButtons) },
+                )
                 PreferenceSlider(
                     title = stringResource(R.string.controller_timeout),
                     description = stringResource(R.string.seconds, uiState.preferences.controllerAutoHideTimeout),

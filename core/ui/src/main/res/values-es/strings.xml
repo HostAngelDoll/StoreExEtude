@@ -303,4 +303,5 @@
     <string name="show_video_text_panel_description">Mostrar automáticamente el panel de texto lateral al iniciar la reproducción</string>
     <string name="no_notes_found">No se encontraron notas</string>
     <string name="show_rotation_button">Mostrar botón de rotación</string>
+    <string name="show_prev_next_buttons">Mostrar Anterior/Siguiente</string>
 </resources>

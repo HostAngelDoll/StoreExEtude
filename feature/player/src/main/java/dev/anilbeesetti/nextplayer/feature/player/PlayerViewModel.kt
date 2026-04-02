@@ -55,6 +55,14 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
+    fun updateSideTextPanelSplitRatio(ratio: Float) {
+        viewModelScope.launch {
+            preferencesRepository.updateApplicationPreferences {
+                it.copy(sideTextPanelSplitRatio = ratio.coerceIn(0.25f, 0.75f))
+            }
+        }
+    }
+
     fun loadVideoNotes(uri: Uri, context: android.content.Context) {
         viewModelScope.launch {
             val notes = TextSidecarResolver.resolve(context, uri)

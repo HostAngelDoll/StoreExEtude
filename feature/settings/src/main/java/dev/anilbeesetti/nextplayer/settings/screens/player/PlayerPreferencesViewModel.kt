@@ -66,6 +66,7 @@ class PlayerPreferencesViewModel @Inject constructor(
             is PlayerPreferencesUiEvent.UpdateOsdMarginPercent -> updateOsdMarginPercent(event.value)
             PlayerPreferencesUiEvent.ToggleOsdShowBackground -> toggleOsdShowBackground()
             PlayerPreferencesUiEvent.ToggleShowRotationButton -> toggleShowRotationButton()
+            PlayerPreferencesUiEvent.ToggleShowPrevNextButtons -> toggleShowPrevNextButtons()
         }
     }
 
@@ -236,6 +237,14 @@ class PlayerPreferencesViewModel @Inject constructor(
             }
         }
     }
+
+    private fun toggleShowPrevNextButtons() {
+        viewModelScope.launch {
+            preferencesRepository.updatePlayerPreferences {
+                it.copy(showPrevNextButtons = !it.showPrevNextButtons)
+            }
+        }
+    }
 }
 
 @Stable
@@ -273,4 +282,5 @@ sealed interface PlayerPreferencesUiEvent {
     data class UpdateOsdMarginPercent(val value: Int) : PlayerPreferencesUiEvent
     data object ToggleOsdShowBackground : PlayerPreferencesUiEvent
     data object ToggleShowRotationButton : PlayerPreferencesUiEvent
+    data object ToggleShowPrevNextButtons : PlayerPreferencesUiEvent
 }
