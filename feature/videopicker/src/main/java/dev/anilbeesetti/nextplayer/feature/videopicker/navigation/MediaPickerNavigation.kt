@@ -6,6 +6,7 @@ import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavOptions
 import androidx.navigation.compose.composable
+import dev.anilbeesetti.nextplayer.feature.videopicker.screens.journals.JournalsListRoute
 import dev.anilbeesetti.nextplayer.feature.videopicker.screens.mediapicker.MediaPickerRoute
 import kotlinx.serialization.Serializable
 
@@ -21,12 +22,19 @@ data class MediaPickerRoute(
     val folderId: String? = null,
 )
 
+@Serializable
+object JournalsListRoute
+
 fun NavController.navigateToMediaPickerScreen(
     folderId: String,
     navOptions: NavOptions? = null,
 ) {
     val encodedFolderId = Uri.encode(folderId)
     this.navigate(MediaPickerRoute(encodedFolderId), navOptions)
+}
+
+fun NavController.navigateToJournalsListScreen(navOptions: NavOptions? = null) {
+    this.navigate(JournalsListRoute, navOptions)
 }
 
 fun NavGraphBuilder.mediaPickerScreen(
@@ -36,6 +44,7 @@ fun NavGraphBuilder.mediaPickerScreen(
     onFolderClick: (folderPath: String) -> Unit,
     onSettingsClick: () -> Unit,
     onSearchClick: () -> Unit,
+    onManageJournalsClick: () -> Unit,
 ) {
     composable<MediaPickerRoute> {
         MediaPickerRoute(
@@ -45,6 +54,13 @@ fun NavGraphBuilder.mediaPickerScreen(
             onFolderClick = onFolderClick,
             onSettingsClick = onSettingsClick,
             onSearchClick = onSearchClick,
+            onManageJournalsClick = onManageJournalsClick,
+        )
+    }
+    composable<JournalsListRoute> {
+        JournalsListRoute(
+            onSettingsClick = onSettingsClick,
+            onNavigateUp = onNavigateUp,
         )
     }
 }

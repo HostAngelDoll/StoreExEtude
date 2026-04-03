@@ -116,6 +116,7 @@ fun MediaPickerRoute(
     onFolderClick: (folderPath: String) -> Unit,
     onSettingsClick: () -> Unit,
     onSearchClick: () -> Unit,
+    onManageJournalsClick: () -> Unit,
     onNavigateUp: () -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -128,6 +129,7 @@ fun MediaPickerRoute(
         onFolderClick = onFolderClick,
         onSettingsClick = onSettingsClick,
         onSearchClick = onSearchClick,
+        onManageJournalsClick = onManageJournalsClick,
         onEvent = viewModel::onEvent,
     )
 }
@@ -142,6 +144,7 @@ internal fun MediaPickerScreen(
     onFolderClick: (String) -> Unit = {},
     onSettingsClick: () -> Unit = {},
     onSearchClick: () -> Unit = {},
+    onManageJournalsClick: () -> Unit = {},
     onEvent: (MediaPickerUiEvent) -> Unit = {},
 ) {
     val selectionManager = rememberSelectionManager()
@@ -316,6 +319,21 @@ internal fun MediaPickerScreen(
                     }
                 },
             ) {
+                FloatingActionButtonMenuItem(
+                    onClick = {
+                        isFabExpanded = false
+                        onManageJournalsClick()
+                    },
+                    icon = {
+                        Icon(
+                            imageVector = NextIcons.ExtraSettings,
+                            contentDescription = null,
+                        )
+                    },
+                    text = {
+                        Text(text = stringResource(id = R.string.manage_journals))
+                    },
+                )
                 FloatingActionButtonMenuItem(
                     onClick = {
                         isFabExpanded = false
