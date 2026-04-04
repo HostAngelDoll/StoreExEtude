@@ -127,6 +127,7 @@ object NextIcons {
     val SmartButton = Icons.Rounded.SmartButton
     val Style = Icons.Rounded.Style
     val Subtitle = Icons.Rounded.Subtitles
+    val Sync = Icons.Rounded.Update
     val Size = Icons.AutoMirrored.Rounded.CompareArrows
     val Sensitivity = Icons.Rounded.Tune
     val Speed = Icons.Rounded.Speed

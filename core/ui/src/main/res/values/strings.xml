@@ -314,6 +314,11 @@
     <string name="no_notes_found">No notes found</string>
     <string name="show_rotation_button">Show rotation button</string>
     <string name="show_prev_next_buttons">Show Previous/Next buttons</string>
+    <string name="manage_journals">Manage Journals</string>
+    <string name="journals">Journals</string>
+    <string name="no_journals_available">No journals available</string>
+    <string name="materials">Materials</string>
+    <string name="sync">Sync</string>
 
     <string name="player_osd">Player OSD</string>
     <string name="show_player_osd">Show OSD</string>
