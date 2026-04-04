@@ -7,24 +7,26 @@ data class Journal(
     val name: String,
     val expectedDate: Long,
     val state: String,
-    val materialsCount: Int
+    val materialsCount: Int,
 ) : Serializable {
     companion object {
         val samples = listOf(
             Journal(
                 id = "1",
                 name = "Jornada de Pruebas A",
-                expectedDate = 1775822400000L, // Friday, April 10, 2026
+                // Friday, April 10, 2026
+                expectedDate = 1775822400000L,
                 state = "Pendiente",
-                materialsCount = 5
+                materialsCount = 5,
             ),
             Journal(
                 id = "2",
                 name = "Jornada de Pruebas B",
-                expectedDate = 1775908800000L, // Saturday, April 11, 2026
+                // Saturday, April 11, 2026
+                expectedDate = 1775908800000L,
                 state = "Completada",
-                materialsCount = 3
-            )
+                materialsCount = 3,
+            ),
         )
     }
 }
