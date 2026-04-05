@@ -7,6 +7,7 @@ import dev.anilbeesetti.nextplayer.settings.Setting
 import dev.anilbeesetti.nextplayer.settings.navigation.aboutPreferencesScreen
 import dev.anilbeesetti.nextplayer.settings.navigation.appearancePreferencesScreen
 import dev.anilbeesetti.nextplayer.settings.navigation.audioPreferencesScreen
+import dev.anilbeesetti.nextplayer.settings.navigation.journalPreferencesScreen
 import dev.anilbeesetti.nextplayer.settings.navigation.decoderPreferencesScreen
 import dev.anilbeesetti.nextplayer.settings.navigation.folderPreferencesScreen
 import dev.anilbeesetti.nextplayer.settings.navigation.generalPreferencesScreen
@@ -16,6 +17,7 @@ import dev.anilbeesetti.nextplayer.settings.navigation.navigateToAboutPreference
 import dev.anilbeesetti.nextplayer.settings.navigation.navigateToAppearancePreferences
 import dev.anilbeesetti.nextplayer.settings.navigation.gesturePreferencesScreen
 import dev.anilbeesetti.nextplayer.settings.navigation.navigateToAudioPreferences
+import dev.anilbeesetti.nextplayer.settings.navigation.navigateToJournalPreferences
 import dev.anilbeesetti.nextplayer.settings.navigation.navigateToDecoderPreferences
 import dev.anilbeesetti.nextplayer.settings.navigation.navigateToGesturePreferences
 import dev.anilbeesetti.nextplayer.settings.navigation.navigateToFolderPreferencesScreen
@@ -52,6 +54,7 @@ fun NavGraphBuilder.settingsNavGraph(
                     Setting.AUDIO -> navController.navigateToAudioPreferences()
                     Setting.SUBTITLE -> navController.navigateToSubtitlePreferences()
                     Setting.GENERAL -> navController.navigateToGeneralPreferences()
+                    Setting.JOURNALS -> navController.navigateToJournalPreferences()
                     Setting.ABOUT -> navController.navigateToAboutPreferences()
                 }
             },
@@ -86,6 +89,9 @@ fun NavGraphBuilder.settingsNavGraph(
             onNavigateUp = navController::navigateUp,
         )
         generalPreferencesScreen(
+            onNavigateUp = navController::navigateUp,
+        )
+        journalPreferencesScreen(
             onNavigateUp = navController::navigateUp,
         )
         aboutPreferencesScreen(

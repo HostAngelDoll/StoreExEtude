@@ -2,12 +2,15 @@ package dev.anilbeesetti.nextplayer.core.model
 
 import java.io.Serializable
 
+@kotlinx.serialization.Serializable
 data class Journal(
     val id: String,
     val name: String,
     val expectedDate: Long,
     val state: String,
     val materialsCount: Int,
+    val updatedAt: Long = 0,
+    val deleted: Boolean = false,
 ) : Serializable {
     companion object {
         val samples = listOf(

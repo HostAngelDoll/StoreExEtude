@@ -39,6 +39,14 @@ data class ApplicationPreferences(
     val osdShowClock: Boolean = true,
     val osdMarginPercent: Int = 2,
     val osdShowBackground: Boolean = false,
+
+    // StoreEtude Sync Settings
+    val syncOnAppStart: Boolean = false,
+    val recursosUri: String? = null,
+    val jornadasUri: String? = null,
+    val lastServerIp: String? = null,
+    val manualServerIp: String? = null,
+    val serverPort: Int = 9090,
 ) {
 
     companion object {

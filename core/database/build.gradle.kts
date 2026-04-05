@@ -32,6 +32,7 @@ kotlin {
 
 dependencies {
 
+    implementation(project(":core:model"))
     implementation(libs.androidx.core.ktx)
 
     // Hilt

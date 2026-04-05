@@ -319,6 +319,17 @@
     <string name="no_journals_available">No journals available</string>
     <string name="materials">Materials</string>
     <string name="sync">Sync</string>
+    <string name="journals_description">Configure sync with StoreEtude server</string>
+    <string name="sync_on_app_start">Sync on app start</string>
+    <string name="resources_folder">Resources folder</string>
+    <string name="journals_folder">Journals folder</string>
+    <string name="server_ip">Server IP</string>
+    <string name="server_port">Server Port</string>
+    <string name="last_server_ip">Last server IP</string>
+    <string name="manual_server_ip">Manual server IP</string>
+    <string name="select_folder">Select folder</string>
+    <string name="enter_ip">Enter IP address</string>
+    <string name="enter_port">Enter port number</string>
 
     <string name="player_osd">Player OSD</string>
     <string name="show_player_osd">Show OSD</string>
