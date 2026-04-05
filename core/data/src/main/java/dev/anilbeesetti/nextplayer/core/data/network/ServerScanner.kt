@@ -3,6 +3,7 @@ package dev.anilbeesetti.nextplayer.core.data.network
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import dev.anilbeesetti.nextplayer.core.common.Logger
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
@@ -16,6 +17,10 @@ class ServerScanner @Inject constructor(
     @ApplicationContext private val context: Context,
     private val client: StoreEtudeClient
 ) {
+    companion object {
+        private const val TAG = "ServerScanner"
+    }
+
     suspend fun scan(port: Int): String? = withContext(Dispatchers.IO) {
         val subnet = getSubnet() ?: return@withContext null
         val channel = Channel<String?>(Channel.CONFLATED)
@@ -29,7 +34,8 @@ class ServerScanner @Inject constructor(
                     } catch (e: Exception) {
                         null
                     }
-                    if (ping?.name == "StoreEtude") {
+                    if (ping?.name?.trim()?.equals("StoreEtude", ignoreCase = true) == true) {
+                        Logger.logDebug(TAG, "Server found during scan: $ip")
                         channel.trySend(ip)
                     }
                 }

@@ -4,6 +4,7 @@ import dev.anilbeesetti.nextplayer.core.common.Logger
 import dev.anilbeesetti.nextplayer.core.model.Journal
 import io.ktor.client.*
 import io.ktor.client.call.*
+import io.ktor.client.statement.*
 import io.ktor.client.plugins.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.plugins.logging.*
@@ -58,12 +59,14 @@ class StoreEtudeClient @Inject constructor() {
     suspend fun ping(ip: String, port: Int): PingResponse? {
         val url = "http://$ip:$port/ping"
         return try {
-            client.get(url) {
+            val response = client.get(url) {
                 timeout {
                     requestTimeoutMillis = 1000
                     connectTimeoutMillis = 500
                 }
-            }.body()
+            }
+            Logger.logDebug(TAG, "Ping response for $url: Status=${response.status}, Body=${response.bodyAsText()}")
+            response.body()
         } catch (e: Exception) {
             Logger.logError(TAG, "Ping failed for $url: ${e.message}")
             null

@@ -17,6 +17,7 @@ import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.widget.Toast
+import dev.anilbeesetti.nextplayer.core.common.Logger
 import dagger.hilt.android.qualifiers.ApplicationContext
 
 sealed class SyncResult {
@@ -35,6 +36,10 @@ class JournalSyncManager @Inject constructor(
     private val serverScanner: ServerScanner,
     private val journalDao: JournalDao
 ) {
+    companion object {
+        private const val TAG = "JournalSyncManager"
+    }
+
     private val json = Json {
         encodeDefaults = true
         ignoreUnknownKeys = true
@@ -53,7 +58,8 @@ class JournalSyncManager @Inject constructor(
             ip = serverScanner.scan(port)
         } else {
             val ping = client.ping(ip, port)
-            if (ping?.name != "StoreEtude") {
+            if (ping?.name?.trim()?.equals("StoreEtude", ignoreCase = true) != true) {
+                Logger.logDebug(TAG, "Manual/Last IP $ip failed handshake: name=${ping?.name}")
                 ip = serverScanner.scan(port)
             }
         }
