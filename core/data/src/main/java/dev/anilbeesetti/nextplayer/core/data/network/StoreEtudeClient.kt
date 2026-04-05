@@ -12,6 +12,7 @@ import io.ktor.client.request.*
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -27,7 +28,7 @@ data class JournalResponse(
     val nombre: String,
     val fecha_esperada: String,
     val estado: String,
-    val materiales: List<String>,
+    val materiales: List<JsonObject>,
     val updated_at: Long,
     val deleted: Boolean = false
 )
