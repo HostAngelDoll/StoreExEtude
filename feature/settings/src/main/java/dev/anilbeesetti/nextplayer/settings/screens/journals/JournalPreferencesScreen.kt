@@ -38,6 +38,7 @@ fun JournalPreferencesRoute(
         onJornadasUriChange = viewModel::updateJornadasUri,
         onManualIpChange = viewModel::updateManualServerIp,
         onPortChange = viewModel::updateServerPort,
+        onSyncClick = viewModel::sync,
         onNavigateUp = onNavigateUp,
     )
 }
@@ -51,6 +52,7 @@ fun JournalPreferencesScreen(
     onJornadasUriChange: (String?) -> Unit,
     onManualIpChange: (String?) -> Unit,
     onPortChange: (Int) -> Unit,
+    onSyncClick: () -> Unit,
     onNavigateUp: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -92,6 +94,14 @@ fun JournalPreferencesScreen(
                         Icon(
                             imageVector = NextIcons.ArrowBack,
                             contentDescription = stringResource(id = R.string.navigate_up),
+                        )
+                    }
+                },
+                actions = {
+                    IconButton(onClick = onSyncClick) {
+                        Icon(
+                            imageVector = NextIcons.Sync,
+                            contentDescription = stringResource(R.string.sync),
                         )
                     }
                 },

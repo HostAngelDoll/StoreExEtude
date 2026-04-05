@@ -109,4 +109,14 @@ object Utils {
     fun formatLanguage(language: String?): String? {
         return language?.let { lang -> Locale.forLanguageTag(lang).displayLanguage.takeIf { it.isNotEmpty() } }
     }
+
+    /**
+     * Cleans an IP address or URL to return only the host/IP.
+     */
+    fun cleanIpAddress(input: String): String {
+        return input.replace(Regex("https?://"), "")
+            .substringBefore(":")
+            .substringBefore("/")
+            .trim()
+    }
 }

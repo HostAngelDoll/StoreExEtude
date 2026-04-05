@@ -1,5 +1,6 @@
 package dev.anilbeesetti.nextplayer.core.data.network
 
+import dev.anilbeesetti.nextplayer.core.common.Logger
 import dev.anilbeesetti.nextplayer.core.model.Journal
 import io.ktor.client.*
 import io.ktor.client.call.*
@@ -32,6 +33,11 @@ data class JournalResponse(
 
 @Singleton
 class StoreEtudeClient @Inject constructor() {
+
+    companion object {
+        private const val TAG = "StoreEtudeClient"
+    }
+
     private val client = HttpClient {
         install(ContentNegotiation) {
             json(Json {
@@ -50,31 +56,37 @@ class StoreEtudeClient @Inject constructor() {
     }
 
     suspend fun ping(ip: String, port: Int): PingResponse? {
+        val url = "http://$ip:$port/ping"
         return try {
-            client.get("http://$ip:$port/ping") {
+            client.get(url) {
                 timeout {
                     requestTimeoutMillis = 1000
                     connectTimeoutMillis = 500
                 }
             }.body()
         } catch (e: Exception) {
+            Logger.logError(TAG, "Ping failed for $url: ${e.message}")
             null
         }
     }
 
     suspend fun health(ip: String, port: Int): Int {
+        val url = "http://$ip:$port/health"
         return try {
-            val response = client.get("http://$ip:$port/health")
+            val response = client.get(url)
             response.status.value
         } catch (e: Exception) {
+            Logger.logError(TAG, "Health check failed for $url: ${e.message}")
             -1
         }
     }
 
     suspend fun sync(ip: String, port: Int): SyncResponse? {
+        val url = "http://$ip:$port/journals_sync"
         return try {
-            client.get("http://$ip:$port/journals_sync").body()
+            client.get(url).body()
         } catch (e: Exception) {
+            Logger.logError(TAG, "Sync failed for $url: ${e.message}")
             null
         }
     }

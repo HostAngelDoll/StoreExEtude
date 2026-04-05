@@ -3,6 +3,8 @@ package dev.anilbeesetti.nextplayer.settings.screens.journals
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dev.anilbeesetti.nextplayer.core.common.Utils
+import dev.anilbeesetti.nextplayer.core.data.network.JournalSyncManager
 import dev.anilbeesetti.nextplayer.core.data.repository.PreferencesRepository
 import dev.anilbeesetti.nextplayer.core.model.ApplicationPreferences
 import kotlinx.coroutines.flow.SharingStarted
@@ -13,6 +15,7 @@ import javax.inject.Inject
 @HiltViewModel
 class JournalPreferencesViewModel @Inject constructor(
     private val preferencesRepository: PreferencesRepository,
+    private val journalSyncManager: JournalSyncManager,
 ) : ViewModel() {
 
     val uiState = preferencesRepository.applicationPreferences.stateIn(
@@ -41,13 +44,21 @@ class JournalPreferencesViewModel @Inject constructor(
 
     fun updateManualServerIp(ip: String?) {
         viewModelScope.launch {
-            preferencesRepository.updateApplicationPreferences { it.copy(manualServerIp = ip) }
+            val cleanIp = ip?.let { Utils.cleanIpAddress(it) }
+            preferencesRepository.updateApplicationPreferences { it.copy(manualServerIp = cleanIp) }
         }
     }
 
     fun updateServerPort(port: Int) {
         viewModelScope.launch {
             preferencesRepository.updateApplicationPreferences { it.copy(serverPort = port) }
+        }
+    }
+
+    fun sync() {
+        viewModelScope.launch {
+            val result = journalSyncManager.sync()
+            journalSyncManager.showSyncResultMessage(result)
         }
     }
 }

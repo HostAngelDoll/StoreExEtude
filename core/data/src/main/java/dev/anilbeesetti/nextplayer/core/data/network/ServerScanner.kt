@@ -5,6 +5,8 @@ import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.selects.select
 import java.net.Inet4Address
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -16,30 +18,33 @@ class ServerScanner @Inject constructor(
 ) {
     suspend fun scan(port: Int): String? = withContext(Dispatchers.IO) {
         val subnet = getSubnet() ?: return@withContext null
+        val channel = Channel<String?>(Channel.CONFLATED)
 
-        val deferreds = (1..254).map { i ->
-            async {
-                val ip = "$subnet.$i"
-                val ping = try {
-                    client.ping(ip, port)
-                } catch (e: Exception) {
-                    null
+        val scanJob = launch {
+            (1..254).forEach { i ->
+                launch {
+                    val ip = "$subnet.$i"
+                    val ping = try {
+                        client.ping(ip, port)
+                    } catch (e: Exception) {
+                        null
+                    }
+                    if (ping?.name == "StoreEtude") {
+                        channel.trySend(ip)
+                    }
                 }
-                if (ping?.name == "StoreEtude") ip else null
             }
         }
 
-        var foundIp: String? = null
-        for (deferred in deferreds) {
-            val result = deferred.await()
-            if (result != null) {
-                foundIp = result
-                break
+        val result = withTimeoutOrNull(10000) {
+            select<String?> {
+                channel.onReceive { it }
+                scanJob.onJoin { null }
             }
         }
 
-        deferreds.forEach { it.cancel() }
-        foundIp
+        scanJob.cancel()
+        result
     }
 
     private fun getSubnet(): String? {
