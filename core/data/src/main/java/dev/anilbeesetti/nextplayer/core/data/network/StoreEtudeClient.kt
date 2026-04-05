@@ -65,8 +65,10 @@ class StoreEtudeClient @Inject constructor() {
                     connectTimeoutMillis = 500
                 }
             }
-            Logger.logDebug(TAG, "Ping response for $url: Status=${response.status}, Body=${response.bodyAsText()}")
-            response.body()
+            val bodyText = response.bodyAsText()
+            Logger.logDebug(TAG, "Ping response for $url: Status=${response.status}, Body=$bodyText")
+            // Try explicit decoding if needed, though Ktor should handle it
+            Json.decodeFromString<PingResponse>(bodyText)
         } catch (e: Exception) {
             Logger.logError(TAG, "Ping failed for $url: ${e.message}")
             null

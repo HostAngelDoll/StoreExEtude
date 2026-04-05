@@ -54,31 +54,51 @@ class ServerScanner @Inject constructor(
     }
 
     private fun getSubnet(): String? {
-        val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 
-        val wifiSubnet = getSubnetForTransport(connectivityManager, NetworkCapabilities.TRANSPORT_WIFI)
-        if (wifiSubnet != null) return wifiSubnet
-
-        val ethernetSubnet = getSubnetForTransport(connectivityManager, NetworkCapabilities.TRANSPORT_ETHERNET)
-        if (ethernetSubnet != null) return ethernetSubnet
-
-        return null
-    }
-
-    private fun getSubnetForTransport(cm: ConnectivityManager, transport: Int): String? {
-        for (network in cm.allNetworks) {
-            val caps = cm.getNetworkCapabilities(network)
-            if (caps?.hasTransport(transport) == true) {
-                val lp = cm.getLinkProperties(network)
-                lp?.linkAddresses?.forEach {
-                    val addr = it.address
-                    if (addr is Inet4Address && !addr.isLoopbackAddress) {
-                        val ip = addr.hostAddress
-                        if (ip != null) return ip.substringBeforeLast(".")
+        // Strategy: Use the active network if it's Wi-Fi or Ethernet
+        val activeNetwork = cm.activeNetwork
+        if (activeNetwork != null) {
+            val caps = cm.getNetworkCapabilities(activeNetwork)
+            if (caps != null && !caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) {
+                if (caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
+                    caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)) {
+                    val lp = cm.getLinkProperties(activeNetwork)
+                    lp?.linkAddresses?.forEach {
+                        val addr = it.address
+                        if (addr is Inet4Address && !addr.isLoopbackAddress) {
+                            val ip = addr.hostAddress
+                            if (ip != null) {
+                                Logger.logDebug(TAG, "Subnet detected from active network: $ip")
+                                return ip.substringBeforeLast(".")
+                            }
+                        }
                     }
                 }
             }
         }
+
+        // Fallback: Scan all networks for non-VPN Wi-Fi/Ethernet
+        for (network in cm.allNetworks) {
+            val caps = cm.getNetworkCapabilities(network)
+            if (caps != null && !caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) {
+                if (caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
+                    caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)) {
+                    val lp = cm.getLinkProperties(network)
+                    lp?.linkAddresses?.forEach {
+                        val addr = it.address
+                        if (addr is Inet4Address && !addr.isLoopbackAddress) {
+                            val ip = addr.hostAddress
+                            if (ip != null) {
+                                Logger.logDebug(TAG, "Subnet detected from fallback network: $ip")
+                                return ip.substringBeforeLast(".")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         return null
     }
 }
