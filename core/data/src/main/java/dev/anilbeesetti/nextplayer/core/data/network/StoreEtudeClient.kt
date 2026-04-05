@@ -29,7 +29,7 @@ data class JournalResponse(
     val fecha_esperada: String,
     val estado: String,
     val materiales: List<JsonObject>,
-    val updated_at: Long,
+    val updated_at: String,
     val deleted: Boolean = false
 )
 

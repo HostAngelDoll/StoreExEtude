@@ -5,9 +5,7 @@ import androidx.documentfile.provider.DocumentFile
 import dev.anilbeesetti.nextplayer.core.data.repository.PreferencesRepository
 import dev.anilbeesetti.nextplayer.core.database.dao.JournalDao
 import dev.anilbeesetti.nextplayer.core.database.entities.asEntity
-import dev.anilbeesetti.nextplayer.core.database.entities.asExternalModel
 import dev.anilbeesetti.nextplayer.core.model.Journal
-import io.ktor.client.*
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -18,6 +16,7 @@ import android.os.Handler
 import android.os.Looper
 import android.widget.Toast
 import java.time.LocalDate
+import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import dev.anilbeesetti.nextplayer.core.common.Logger
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -89,7 +88,11 @@ class JournalSyncManager @Inject constructor(
                 },
                 state = it.estado,
                 materialsCount = it.materiales.size,
-                updatedAt = it.updated_at,
+                updatedAt = try {
+                    OffsetDateTime.parse(it.updated_at).toInstant().toEpochMilli()
+                } catch (e: Exception) {
+                    0L
+                },
                 deleted = it.deleted
             )
         }
