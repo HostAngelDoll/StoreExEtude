@@ -25,7 +25,7 @@ data class SyncResponse(val journals: List<JournalResponse>)
 data class JournalResponse(
     val id: String,
     val nombre: String,
-    val fecha_esperada: Long,
+    val fecha_esperada: String,
     val estado: String,
     val materiales: List<String>,
     val updated_at: Long,

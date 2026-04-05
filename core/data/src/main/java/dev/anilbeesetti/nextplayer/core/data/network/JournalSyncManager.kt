@@ -17,6 +17,8 @@ import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.widget.Toast
+import java.time.LocalDate
+import java.time.ZoneOffset
 import dev.anilbeesetti.nextplayer.core.common.Logger
 import dagger.hilt.android.qualifiers.ApplicationContext
 
@@ -80,7 +82,11 @@ class JournalSyncManager @Inject constructor(
             Journal(
                 id = it.id,
                 name = it.nombre,
-                expectedDate = it.fecha_esperada,
+                expectedDate = try {
+                    LocalDate.parse(it.fecha_esperada).atStartOfDay().toInstant(ZoneOffset.UTC).toEpochMilli()
+                } catch (e: Exception) {
+                    0L
+                },
                 state = it.estado,
                 materialsCount = it.materiales.size,
                 updatedAt = it.updated_at,
