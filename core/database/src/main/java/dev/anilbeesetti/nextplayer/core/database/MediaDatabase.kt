@@ -11,6 +11,8 @@ import dev.anilbeesetti.nextplayer.core.database.entities.AudioStreamInfoEntity
 import dev.anilbeesetti.nextplayer.core.database.entities.DirectoryEntity
 import dev.anilbeesetti.nextplayer.core.database.entities.MediumEntity
 import dev.anilbeesetti.nextplayer.core.database.entities.MediumStateEntity
+import dev.anilbeesetti.nextplayer.core.database.dao.JournalDao
+import dev.anilbeesetti.nextplayer.core.database.entities.JournalEntity
 import dev.anilbeesetti.nextplayer.core.database.entities.SubtitleStreamInfoEntity
 import dev.anilbeesetti.nextplayer.core.database.entities.VideoStreamInfoEntity
 
@@ -22,8 +24,9 @@ import dev.anilbeesetti.nextplayer.core.database.entities.VideoStreamInfoEntity
         VideoStreamInfoEntity::class,
         AudioStreamInfoEntity::class,
         SubtitleStreamInfoEntity::class,
+        JournalEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = true,
 )
 abstract class MediaDatabase : RoomDatabase() {
@@ -33,6 +36,8 @@ abstract class MediaDatabase : RoomDatabase() {
     abstract fun mediumStateDao(): MediumStateDao
 
     abstract fun directoryDao(): DirectoryDao
+
+    abstract fun journalDao(): JournalDao
 
     companion object {
         const val DATABASE_NAME = "media_db"
@@ -182,6 +187,25 @@ abstract class MediaDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE `media_state` ADD COLUMN `subtitle_delay` INTEGER NOT NULL DEFAULT 0")
                 db.execSQL("ALTER TABLE `media_state` ADD COLUMN `subtitle_speed` REAL NOT NULL DEFAULT 1")
+            }
+        }
+
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `journals` (
+                        `id` TEXT NOT NULL,
+                        `name` TEXT NOT NULL,
+                        `expectedDate` INTEGER NOT NULL,
+                        `state` TEXT NOT NULL,
+                        `materialsCount` INTEGER NOT NULL,
+                        `updatedAt` INTEGER NOT NULL,
+                        `deleted` INTEGER NOT NULL,
+                        PRIMARY KEY(`id`)
+                    )
+                    """,
+                )
             }
         }
     }

@@ -19,4 +19,7 @@ object DaoModule {
 
     @Provides
     fun provideDirectoryDao(db: MediaDatabase): DirectoryDao = db.directoryDao()
+
+    @Provides
+    fun provideJournalDao(db: MediaDatabase) = db.journalDao()
 }

@@ -78,6 +78,7 @@ enum class Setting {
     AUDIO,
     SUBTITLE,
     GENERAL,
+    JOURNALS,
     ABOUT,
 }
 
@@ -134,6 +135,12 @@ private enum class SettingRow(
         descriptionResId = R.string.general_description,
         icon = NextIcons.ExtraSettings,
         setting = Setting.GENERAL,
+    ),
+    JOURNALS(
+        titleResId = R.string.manage_journals,
+        descriptionResId = R.string.journals_description,
+        icon = NextIcons.Sync,
+        setting = Setting.JOURNALS,
     ),
     ABOUT(
         titleResId = R.string.about_name,
