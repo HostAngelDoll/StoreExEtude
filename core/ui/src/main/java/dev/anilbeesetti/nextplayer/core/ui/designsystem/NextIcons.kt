@@ -22,6 +22,7 @@ import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.Dashboard
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.DeleteSweep
+import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.Deselect
 import androidx.compose.material.icons.rounded.DeveloperBoard
 import androidx.compose.material.icons.rounded.DoneAll
@@ -93,6 +94,7 @@ object NextIcons {
     val Contrast = Icons.Rounded.Contrast
     val DarkMode = Icons.Rounded.DarkMode
     val DashBoard = Icons.Rounded.Dashboard
+    val Description = Icons.Rounded.Description
     val Decoder = Icons.Rounded.DeveloperBoard
     val Delete = Icons.Rounded.Delete
     val DoubleTap = Icons.Rounded.DoubleArrow
@@ -122,6 +124,7 @@ object NextIcons {
     val Rotation = Icons.Rounded.ScreenRotationAlt
     val Search = Icons.Rounded.Search
     val Selection = Icons.Rounded.DoneAll
+    val Done = Icons.Rounded.Check
     val Settings = Icons.Rounded.Settings
     val Share = Icons.Rounded.Share
     val SmartButton = Icons.Rounded.SmartButton
