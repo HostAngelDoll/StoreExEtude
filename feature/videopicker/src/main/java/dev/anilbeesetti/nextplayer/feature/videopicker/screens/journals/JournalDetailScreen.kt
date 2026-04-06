@@ -199,6 +199,12 @@ fun MaterialItem(material: MaterialUiModel) {
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error
                     )
+                } else if (!material.hasUserSelection && material.summonPath != null) {
+                    Text(
+                        text = material.summonPath,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.outline
+                    )
                 }
 
                 Row(

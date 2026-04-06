@@ -7,6 +7,7 @@ data class MaterialUiModel(
     val title: String,
     val originalFileName: String?,
     val path: String?,
+    val summonPath: String?,
     val isDownloaded: Boolean,
     val duration: String?,
     val hasSidecar: Boolean,

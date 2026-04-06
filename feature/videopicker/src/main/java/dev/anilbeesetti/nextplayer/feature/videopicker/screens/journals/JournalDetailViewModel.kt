@@ -72,6 +72,7 @@ class JournalDetailViewModel @Inject constructor(
                     journalResponse.materiales.mapIndexed { index, materialJson ->
                         val titleMaterial = materialJson["title_material"]?.jsonPrimitive?.contentOrNull ?: ""
                         val path = materialJson["path"]?.jsonPrimitive?.contentOrNull
+                        val summonPath = materialJson["summon_path"]?.jsonPrimitive?.contentOrNull
                         val datetimeRange = materialJson["datetime_range_utc_06"]?.jsonPrimitive?.contentOrNull ?: ""
 
                         val isDownloaded = if (!path.isNullOrEmpty() && recursosUri != null) {
@@ -106,6 +107,7 @@ class JournalDetailViewModel @Inject constructor(
                             title = if (hasUserSelection) titleMaterial else "No seleccionado",
                             originalFileName = path?.substringAfterLast('/'),
                             path = path,
+                            summonPath = summonPath,
                             isDownloaded = isDownloaded,
                             duration = duration,
                             hasSidecar = hasSidecar,
