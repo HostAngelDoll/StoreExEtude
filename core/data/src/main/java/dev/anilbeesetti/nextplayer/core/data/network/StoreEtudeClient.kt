@@ -132,4 +132,24 @@ class StoreEtudeClient @Inject constructor() {
             }
         }
     }
+
+    suspend fun downloadFileWithProgress(
+        ip: String,
+        port: Int,
+        path: String,
+        onProgress: (Long, Long) -> Unit
+    ): HttpStatement {
+        val url = "http://$ip:$port/downloads"
+        return client.prepareGet(url) {
+            parameter("path", path)
+            onDownload { bytesSentTotal, contentLength ->
+                onProgress(bytesSentTotal, contentLength ?: 0L)
+            }
+            timeout {
+                requestTimeoutMillis = Long.MAX_VALUE
+                socketTimeoutMillis = Long.MAX_VALUE
+                connectTimeoutMillis = 30000
+            }
+        }
+    }
 }

@@ -29,10 +29,12 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -42,6 +44,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.anilbeesetti.nextplayer.core.ui.R
 import dev.anilbeesetti.nextplayer.core.ui.components.NextTopAppBar
+import coil3.compose.AsyncImage
 import dev.anilbeesetti.nextplayer.core.ui.designsystem.NextIcons
 import dev.anilbeesetti.nextplayer.feature.videopicker.composables.CenterCircularProgressBar
 import dev.anilbeesetti.nextplayer.feature.videopicker.composables.InfoChip
@@ -60,6 +63,7 @@ fun JournalDetailRoute(
         onExecuteClick = { viewModel.executeJournal(onPlayVideo) },
         onResetClick = viewModel::resetJournal,
         onDownloadClick = viewModel::downloadMaterials,
+        onStopDownloadClick = viewModel::stopDownloads,
         onUploadClick = { /* Future implementation */ }
     )
 }
@@ -72,6 +76,7 @@ fun JournalDetailScreen(
     onExecuteClick: () -> Unit,
     onResetClick: () -> Unit,
     onDownloadClick: () -> Unit,
+    onStopDownloadClick: () -> Unit,
     onUploadClick: () -> Unit,
 ) {
     Scaffold(
@@ -115,20 +120,43 @@ fun JournalDetailScreen(
                 }
 
                 if (uiState.isDownloading) {
-                    LinearProgressIndicator(
-                        progress = { uiState.downloadProgress },
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                    )
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                    ) {
+                        Text(
+                            text = "Progreso jornada",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        LinearProgressIndicator(
+                            progress = { uiState.overallProgress },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Descargando: ${uiState.currentFileName ?: "..."}",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        LinearProgressIndicator(
+                            progress = { uiState.fileProgress },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
                 }
 
                 ActionButtons(
-                    canDownload = uiState.canDownload && !uiState.isDownloading,
+                    isDownloading = uiState.isDownloading,
+                    canDownload = uiState.canDownload,
                     canExecute = uiState.canExecute && !uiState.isDownloading,
                     canReset = uiState.canReset && !uiState.isDownloading,
                     canUpload = uiState.canUpload && !uiState.isDownloading,
                     onDownloadClick = onDownloadClick,
+                    onStopDownloadClick = onStopDownloadClick,
                     onExecuteClick = onExecuteClick,
                     onResetClick = onResetClick,
                     onUploadClick = onUploadClick
@@ -259,11 +287,20 @@ fun MaterialItem(material: MaterialUiModel) {
                     .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = NextIcons.Video,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                )
+                if (material.thumbnailUri != null) {
+                    AsyncImage(
+                        model = material.thumbnailUri,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    Icon(
+                        imageVector = NextIcons.Video,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    )
+                }
             }
         }
     )
@@ -271,11 +308,13 @@ fun MaterialItem(material: MaterialUiModel) {
 
 @Composable
 fun ActionButtons(
+    isDownloading: Boolean,
     canDownload: Boolean,
     canExecute: Boolean,
     canReset: Boolean,
     canUpload: Boolean,
     onDownloadClick: () -> Unit,
+    onStopDownloadClick: () -> Unit,
     onExecuteClick: () -> Unit,
     onResetClick: () -> Unit,
     onUploadClick: () -> Unit,
@@ -286,12 +325,25 @@ fun ActionButtons(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Button(
-            onClick = onDownloadClick,
-            modifier = Modifier.fillMaxWidth(),
-            enabled = canDownload
-        ) {
-            Text("Descargar materiales")
+        if (isDownloading) {
+            Button(
+                onClick = onStopDownloadClick,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error,
+                    contentColor = MaterialTheme.colorScheme.onError
+                )
+            ) {
+                Text("Detener descargas")
+            }
+        } else {
+            Button(
+                onClick = onDownloadClick,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = canDownload
+            ) {
+                Text("Descargar materiales")
+            }
         }
         Button(
             onClick = onExecuteClick,
