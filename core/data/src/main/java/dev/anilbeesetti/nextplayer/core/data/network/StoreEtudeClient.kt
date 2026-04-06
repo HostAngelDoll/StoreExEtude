@@ -126,8 +126,9 @@ class StoreEtudeClient @Inject constructor() {
         return client.prepareGet(url) {
             parameter("path", path)
             timeout {
-                requestTimeoutMillis = 0 // INFINITE_TIMEOUT_MS is 0 in Ktor
-                socketTimeoutMillis = 0
+                requestTimeoutMillis = Long.MAX_VALUE
+                socketTimeoutMillis = Long.MAX_VALUE
+                connectTimeoutMillis = 30000
             }
         }
     }

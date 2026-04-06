@@ -97,8 +97,8 @@ class JournalDetailViewModel @Inject constructor(
                                 val downloadList = client.getDownloadList(ip, port, summonPath)
                                 if (downloadList != null) {
                                     val missingFiles = downloadList.files.filter { fileInfo ->
-                                        val localPath = "${downloadList.path}/${fileInfo.name}"
-                                        !checkFileExists(recursosUri, localPath)
+                                        val localPath = joinPaths(downloadList.path, fileInfo.name)
+                                        !checkFileExists(recursosUri, localPath, fileInfo.size)
                                     }
                                     missingFilesCount = missingFiles.size
                                     isDownloaded = missingFilesCount == 0
@@ -184,14 +184,26 @@ class JournalDetailViewModel @Inject constructor(
         }
     }
 
-    private fun checkFileExists(recursosUri: String, path: String): Boolean {
+    private fun checkFileExists(recursosUri: String, path: String, expectedSize: Long? = null): Boolean {
         return try {
             val treeUri = Uri.parse(recursosUri)
             val file = treeUri.findFileByPath(context, path)
-            file?.exists() == true
+            if (file?.exists() == true) {
+                if (expectedSize != null && expectedSize > 0) {
+                    file.length() == expectedSize
+                } else {
+                    true
+                }
+            } else {
+                false
+            }
         } catch (e: Exception) {
             false
         }
+    }
+
+    private fun joinPaths(base: String, name: String): String {
+        return "${base.trimEnd('/')}/${name.trimStart('/')}"
     }
 
     private fun checkSidecarExists(recursosUri: String, path: String): Boolean {
@@ -275,8 +287,8 @@ class JournalDetailViewModel @Inject constructor(
                         val downloadList = client.getDownloadList(ip, port, material.summonPath)
                         if (downloadList != null) {
                             for (fileInfo in downloadList.files) {
-                                val localPath = "${downloadList.path}/${fileInfo.name}"
-                                if (!checkFileExists(recursosUri, localPath)) {
+                                val localPath = joinPaths(downloadList.path, fileInfo.name)
+                                if (!checkFileExists(recursosUri, localPath, fileInfo.size)) {
                                     downloadSingleFile(ip, port, localPath, recursosUri)
                                 }
                             }
