@@ -41,6 +41,7 @@ fun JournalsListRoute(
     viewModel: JournalsListViewModel = hiltViewModel(),
     onSettingsClick: () -> Unit,
     onNavigateUp: () -> Unit,
+    onJournalClick: (String) -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -49,6 +50,7 @@ fun JournalsListRoute(
         onSyncClick = viewModel::syncJournals,
         onSettingsClick = onSettingsClick,
         onNavigateUp = onNavigateUp,
+        onJournalClick = onJournalClick,
     )
 }
 
@@ -59,6 +61,7 @@ fun JournalsListScreen(
     onSyncClick: () -> Unit,
     onSettingsClick: () -> Unit,
     onNavigateUp: () -> Unit,
+    onJournalClick: (String) -> Unit,
 ) {
     Scaffold(
         topBar = {
@@ -114,7 +117,10 @@ fun JournalsListScreen(
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             items(journals, key = { it.id }) { journal ->
-                                JournalCard(journal = journal)
+                                JournalCard(
+                                    journal = journal,
+                                    onClick = { onJournalClick(journal.id) }
+                                )
                             }
                         }
                     }
@@ -129,7 +135,10 @@ fun JournalsListScreen(
 }
 
 @Composable
-fun JournalCard(journal: Journal) {
+fun JournalCard(
+    journal: Journal,
+    onClick: () -> Unit,
+) {
     val context = LocalContext.current
     val formattedDate = DateUtils.formatDateTime(
         context,
@@ -143,6 +152,7 @@ fun JournalCard(journal: Journal) {
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant,
         ),
+        onClick = onClick,
     ) {
         Column(
             modifier = Modifier.padding(16.dp),

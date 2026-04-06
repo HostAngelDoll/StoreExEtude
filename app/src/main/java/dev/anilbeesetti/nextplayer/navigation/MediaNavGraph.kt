@@ -9,6 +9,7 @@ import dev.anilbeesetti.nextplayer.feature.player.PlayerActivity
 import dev.anilbeesetti.nextplayer.feature.player.utils.PlayerApi
 import dev.anilbeesetti.nextplayer.feature.videopicker.navigation.MediaPickerRoute
 import dev.anilbeesetti.nextplayer.feature.videopicker.navigation.mediaPickerScreen
+import dev.anilbeesetti.nextplayer.feature.videopicker.navigation.navigateToJournalDetailScreen
 import dev.anilbeesetti.nextplayer.feature.videopicker.navigation.navigateToJournalsListScreen
 import dev.anilbeesetti.nextplayer.feature.videopicker.navigation.navigateToMediaPickerScreen
 import dev.anilbeesetti.nextplayer.feature.videopicker.navigation.navigateToSearch
@@ -45,6 +46,7 @@ fun NavGraphBuilder.mediaNavGraph(
             onSettingsClick = navController::navigateToSettings,
             onSearchClick = navController::navigateToSearch,
             onManageJournalsClick = navController::navigateToJournalsListScreen,
+            onJournalDetailClick = navController::navigateToJournalDetailScreen,
         )
 
         searchScreen(
