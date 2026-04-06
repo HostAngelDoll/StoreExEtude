@@ -9,10 +9,17 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import dev.anilbeesetti.nextplayer.core.common.extensions.findFileByPath
+import dev.anilbeesetti.nextplayer.core.common.extensions.getOrCreateFileByPath
 import dev.anilbeesetti.nextplayer.core.data.network.JournalResponse
+import dev.anilbeesetti.nextplayer.core.data.network.ServerScanner
+import dev.anilbeesetti.nextplayer.core.data.network.StoreEtudeClient
 import dev.anilbeesetti.nextplayer.core.data.network.SyncResponse
 import dev.anilbeesetti.nextplayer.core.data.repository.PreferencesRepository
 import dev.anilbeesetti.nextplayer.feature.videopicker.navigation.JournalDetailRoute
+import io.ktor.client.statement.bodyAsChannel
+import io.ktor.utils.io.copyAndClose
+import io.ktor.utils.io.jvm.javaio.toInputStream
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -34,6 +41,8 @@ class JournalDetailViewModel @Inject constructor(
     private val savedStateHandle: SavedStateHandle,
     @ApplicationContext private val context: Context,
     private val preferencesRepository: PreferencesRepository,
+    private val client: StoreEtudeClient,
+    private val serverScanner: ServerScanner,
 ) : ViewModel() {
 
     private val journalId: String = savedStateHandle.get<String>("journalId") ?: ""
@@ -69,16 +78,32 @@ class JournalDetailViewModel @Inject constructor(
                 }
 
                 val materials = withContext(Dispatchers.IO) {
+                    val port = prefs.serverPort
+                    val ip = prefs.manualServerIp ?: prefs.lastServerIp
+
                     journalResponse.materiales.mapIndexed { index, materialJson ->
                         val titleMaterial = materialJson["title_material"]?.jsonPrimitive?.contentOrNull ?: ""
                         val path = materialJson["path"]?.jsonPrimitive?.contentOrNull
                         val summonPath = materialJson["summon_path"]?.jsonPrimitive?.contentOrNull
                         val datetimeRange = materialJson["datetime_range_utc_06"]?.jsonPrimitive?.contentOrNull ?: ""
 
-                        val isDownloaded = if (!path.isNullOrEmpty() && recursosUri != null) {
-                            checkFileExists(recursosUri, path)
-                        } else {
-                            false
+                        var isDownloaded = false
+                        var missingFilesCount = 0
+
+                        if (!path.isNullOrEmpty() && recursosUri != null) {
+                            isDownloaded = checkFileExists(recursosUri, path)
+                        } else if (!summonPath.isNullOrEmpty() && recursosUri != null) {
+                            if (ip != null) {
+                                val downloadList = client.getDownloadList(ip, port, summonPath)
+                                if (downloadList != null) {
+                                    val missingFiles = downloadList.files.filter { fileInfo ->
+                                        val localPath = "${downloadList.path}/${fileInfo.name}"
+                                        !checkFileExists(recursosUri, localPath)
+                                    }
+                                    missingFilesCount = missingFiles.size
+                                    isDownloaded = missingFilesCount == 0
+                                }
+                            }
                         }
 
                         val hasSidecar = if (isDownloaded && !path.isNullOrEmpty() && recursosUri != null) {
@@ -113,7 +138,8 @@ class JournalDetailViewModel @Inject constructor(
                             hasSidecar = hasSidecar,
                             hasUserSelection = hasUserSelection,
                             isPlayed = isPlayed,
-                            uri = fileUri
+                            uri = fileUri,
+                            missingFilesCount = missingFilesCount
                         )
                     }
                 }
@@ -160,7 +186,8 @@ class JournalDetailViewModel @Inject constructor(
 
     private fun checkFileExists(recursosUri: String, path: String): Boolean {
         return try {
-            val file = findFileByPath(recursosUri, path)
+            val treeUri = Uri.parse(recursosUri)
+            val file = treeUri.findFileByPath(context, path)
             file?.exists() == true
         } catch (e: Exception) {
             false
@@ -173,22 +200,13 @@ class JournalDetailViewModel @Inject constructor(
     }
 
     private fun getFileUri(recursosUri: String, path: String): Uri? {
-        return findFileByPath(recursosUri, path)?.uri
-    }
-
-    private fun findFileByPath(recursosUri: String, path: String): DocumentFile? {
         val treeUri = Uri.parse(recursosUri)
-        var currentDir = DocumentFile.fromTreeUri(context, treeUri) ?: return null
-
-        val segments = path.split("/").filter { it.isNotEmpty() }
-        for (i in 0 until segments.size - 1) {
-            currentDir = currentDir.findFile(segments[i]) ?: return null
-        }
-        return currentDir.findFile(segments.last())
+        return treeUri.findFileByPath(context, path)?.uri
     }
 
     private fun getVideoDuration(recursosUri: String, path: String): String? {
-        val file = findFileByPath(recursosUri, path) ?: return null
+        val treeUri = Uri.parse(recursosUri)
+        val file = treeUri.findFileByPath(context, path) ?: return null
         val retriever = MediaMetadataRetriever()
         return try {
             retriever.setDataSource(context, file.uri)
@@ -226,5 +244,65 @@ class JournalDetailViewModel @Inject constructor(
     fun executeJournal(onPlay: (Uri) -> Unit) {
         val firstPlayable = _uiState.value.materials.firstOrNull { it.isDownloaded && !it.path.isNullOrEmpty() && it.uri != null }
         firstPlayable?.uri?.let { onPlay(it) }
+    }
+
+    fun downloadMaterials() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isDownloading = true, downloadProgress = 0f) }
+            try {
+                val prefs = preferencesRepository.applicationPreferences.first()
+                val recursosUri = prefs.recursosUri ?: throw Exception("Recursos URI not configured")
+                val port = prefs.serverPort
+                var ip = prefs.manualServerIp ?: prefs.lastServerIp
+
+                if (ip == null) {
+                    ip = serverScanner.scan(port)
+                }
+
+                if (ip == null) throw Exception("Server not found")
+
+                val materialsToDownload = _uiState.value.materials.filter {
+                    !it.isDownloaded && (it.hasUserSelection || !it.summonPath.isNullOrEmpty())
+                }
+
+                var downloadedCount = 0
+                val totalMaterials = materialsToDownload.size
+
+                for (material in materialsToDownload) {
+                    if (!material.path.isNullOrEmpty()) {
+                        downloadSingleFile(ip, port, material.path, recursosUri)
+                    } else if (!material.summonPath.isNullOrEmpty()) {
+                        val downloadList = client.getDownloadList(ip, port, material.summonPath)
+                        if (downloadList != null) {
+                            for (fileInfo in downloadList.files) {
+                                val localPath = "${downloadList.path}/${fileInfo.name}"
+                                if (!checkFileExists(recursosUri, localPath)) {
+                                    downloadSingleFile(ip, port, localPath, recursosUri)
+                                }
+                            }
+                        }
+                    }
+                    downloadedCount++
+                    _uiState.update { it.copy(downloadProgress = downloadedCount.toFloat() / totalMaterials) }
+                }
+
+                loadJournalDetail() // Refresh state
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = e.message) }
+            } finally {
+                _uiState.update { it.copy(isDownloading = false) }
+            }
+        }
+    }
+
+    private suspend fun downloadSingleFile(ip: String, port: Int, path: String, recursosUri: String) = withContext(Dispatchers.IO) {
+        val treeUri = Uri.parse(recursosUri)
+        val file = treeUri.getOrCreateFileByPath(context, path) ?: throw Exception("Failed to create file: $path")
+
+        client.downloadFile(ip, port, path).execute { response ->
+            context.contentResolver.openOutputStream(file.uri)?.use { output ->
+                response.bodyAsChannel().toInputStream().copyTo(output)
+            }
+        }
     }
 }
