@@ -343,9 +343,9 @@ fun ActionButtons(
             Button(
                 onClick = onDownloadClick,
                 modifier = Modifier.fillMaxWidth(),
-                enabled = canDownload
+                enabled = true
             ) {
-                Text("Descargar materiales")
+                Text(if (canDownload) "Descargar materiales" else "Verificar existencias")
             }
         }
         Button(

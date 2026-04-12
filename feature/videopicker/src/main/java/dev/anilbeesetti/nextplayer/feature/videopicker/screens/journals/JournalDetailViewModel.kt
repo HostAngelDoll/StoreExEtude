@@ -110,142 +110,146 @@ class JournalDetailViewModel @Inject constructor(
     fun loadJournalDetail() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
-            try {
-                val prefs = preferencesRepository.applicationPreferences.first()
-                val jornadasUri = prefs.jornadasUri
-                val recursosUri = prefs.recursosUri
+            refreshJournalDetail()
+            _uiState.update { it.copy(isLoading = false) }
+        }
+    }
 
-                if (jornadasUri == null) {
-                    _uiState.update { it.copy(isLoading = false, error = "Jornadas URI not configured") }
-                    return@launch
-                }
+    private suspend fun refreshJournalDetail() {
+        try {
+            val prefs = preferencesRepository.applicationPreferences.first()
+            val jornadasUri = prefs.jornadasUri
+            val recursosUri = prefs.recursosUri
 
-                val syncData = readSyncData(jornadasUri)
-                val journalResponse = syncData?.journals?.find { it.id == journalId }
-
-                if (journalResponse == null) {
-                    _uiState.update { it.copy(isLoading = false, error = "Journal not found") }
-                    return@launch
-                }
-
-                val materials = withContext(Dispatchers.IO) {
-                    val port = prefs.serverPort
-                    val ip = prefs.manualServerIp ?: prefs.lastServerIp
-
-                    journalResponse.materiales.mapIndexed { index, materialJson ->
-                        async {
-                            val titleMaterial = materialJson["title_material"]?.jsonPrimitive?.contentOrNull ?: ""
-                            val path = materialJson["path"]?.jsonPrimitive?.contentOrNull
-                            val summonPath = materialJson["summon_path"]?.jsonPrimitive?.contentOrNull
-                            val lyricSummonPath = materialJson["lyric_summon_path"]?.jsonPrimitive?.contentOrNull
-                            val datetimeRange = materialJson["datetime_range_utc_06"]?.jsonPrimitive?.contentOrNull ?: ""
-
-                            var isDownloaded = false
-                            var missingFilesCount = 0
-
-                            if (!path.isNullOrEmpty() && recursosUri != null) {
-                                isDownloaded = checkFileExists(recursosUri, path)
-                            } else if (!summonPath.isNullOrEmpty() && recursosUri != null) {
-                                if (ip != null) {
-                                    val downloadList = client.getDownloadList(ip, port, summonPath)
-                                    if (downloadList != null) {
-                                        val missingFiles = downloadList.files.filter { fileInfo ->
-                                            val localPath = joinPaths(downloadList.path, fileInfo.name)
-                                            !checkFileExists(recursosUri, localPath, fileInfo.size)
-                                        }
-                                        missingFilesCount += missingFiles.size
-                                    }
-                                }
-                            }
-
-                            if (!lyricSummonPath.isNullOrEmpty() && recursosUri != null && ip != null) {
-                                val downloadList = client.getDownloadList(ip, port, lyricSummonPath)
-                                if (downloadList != null) {
-                                    val missingLyrics = downloadList.files.filter { fileInfo ->
-                                        if (fileInfo.name.lowercase().endsWith(".txt") || fileInfo.name.lowercase().endsWith(".md")) {
-                                            val localPath = joinPaths(downloadList.path, fileInfo.name)
-                                            !checkFileExists(recursosUri, localPath, fileInfo.size)
-                                        } else {
-                                            false
-                                        }
-                                    }
-                                    missingFilesCount += missingLyrics.size
-                                }
-                            }
-
-                            if (!summonPath.isNullOrEmpty() || !lyricSummonPath.isNullOrEmpty()) {
-                                isDownloaded = missingFilesCount == 0
-                            }
-
-                            val hasSidecar = if (isDownloaded && !path.isNullOrEmpty() && recursosUri != null) {
-                                checkSidecarExists(recursosUri, path)
-                            } else {
-                                false
-                            }
-
-                            val duration = if (isDownloaded && !path.isNullOrEmpty() && recursosUri != null) {
-                                getVideoDuration(recursosUri, path)
-                            } else {
-                                null
-                            }
-
-                            val hasUserSelection = titleMaterial != "[User selection]"
-                            val isPlayed = datetimeRange.isNotEmpty()
-
-                            val fileUri = if (isDownloaded && !path.isNullOrEmpty() && recursosUri != null) {
-                                getFileUri(recursosUri, path)
-                            } else {
-                                null
-                            }
-
-                            val thumbnailUri = if (hasUserSelection && isDownloaded && fileUri != null && isVideo(path ?: "")) {
-                                ThumbnailGenerator.getThumbnail(context, fileUri)
-                            } else {
-                                null
-                            }
-
-                            MaterialUiModel(
-                                index = index,
-                                title = if (hasUserSelection) titleMaterial else "No seleccionado",
-                                originalFileName = path?.substringAfterLast('/'),
-                                path = path,
-                                summonPath = summonPath,
-                                lyricSummonPath = lyricSummonPath,
-                                isDownloaded = isDownloaded,
-                                duration = duration,
-                                hasSidecar = hasSidecar,
-                                hasUserSelection = hasUserSelection,
-                                isPlayed = isPlayed,
-                                uri = fileUri,
-                                thumbnailUri = thumbnailUri,
-                                missingFilesCount = missingFilesCount
-                            )
-                        }
-                    }.awaitAll()
-                }
-
-                _uiState.update {
-                    it.copy(
-                        journalId = journalResponse.id,
-                        name = journalResponse.nombre,
-                        expectedDate = try {
-                            LocalDate.parse(journalResponse.fecha_esperada).atStartOfDay().toInstant(ZoneOffset.UTC).toEpochMilli()
-                        } catch (e: Exception) {
-                            0L
-                        },
-                        status = journalResponse.estado,
-                        updatedAt = try {
-                            OffsetDateTime.parse(journalResponse.updated_at).toInstant().toEpochMilli()
-                        } catch (e: Exception) {
-                            0L
-                        },
-                        materials = materials,
-                        isLoading = false
-                    )
-                }
-            } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, error = e.message) }
+            if (jornadasUri == null) {
+                _uiState.update { it.copy(error = "Jornadas URI not configured") }
+                return
             }
+
+            val syncData = readSyncData(jornadasUri)
+            val journalResponse = syncData?.journals?.find { it.id == journalId }
+
+            if (journalResponse == null) {
+                _uiState.update { it.copy(error = "Journal not found") }
+                return
+            }
+
+            val materials = withContext(Dispatchers.IO) {
+                val port = prefs.serverPort
+                val ip = prefs.manualServerIp ?: prefs.lastServerIp
+
+                journalResponse.materiales.mapIndexed { index, materialJson ->
+                    async {
+                        val titleMaterial = materialJson["title_material"]?.jsonPrimitive?.contentOrNull ?: ""
+                        val path = materialJson["path"]?.jsonPrimitive?.contentOrNull
+                        val summonPath = materialJson["summon_path"]?.jsonPrimitive?.contentOrNull
+                        val lyricSummonPath = materialJson["lyric_summon_path"]?.jsonPrimitive?.contentOrNull
+                        val datetimeRange = materialJson["datetime_range_utc_06"]?.jsonPrimitive?.contentOrNull ?: ""
+
+                        var isDownloaded = false
+                        var missingFilesCount = 0
+
+                        if (!path.isNullOrEmpty() && recursosUri != null) {
+                            isDownloaded = checkFileExists(recursosUri, path)
+                        } else if (!summonPath.isNullOrEmpty() && recursosUri != null) {
+                            if (ip != null) {
+                                val downloadList = client.getDownloadList(ip, port, summonPath)
+                                if (downloadList != null) {
+                                    val missingFiles = downloadList.files.filter { fileInfo ->
+                                        val localPath = joinPaths(downloadList.path, fileInfo.name)
+                                        !checkFileExists(recursosUri, localPath, fileInfo.size)
+                                    }
+                                    missingFilesCount += missingFiles.size
+                                }
+                            }
+                        }
+
+                        if (!lyricSummonPath.isNullOrEmpty() && recursosUri != null && ip != null) {
+                            val downloadList = client.getDownloadList(ip, port, lyricSummonPath)
+                            if (downloadList != null) {
+                                val missingLyrics = downloadList.files.filter { fileInfo ->
+                                    if (fileInfo.name.lowercase().endsWith(".txt") || fileInfo.name.lowercase().endsWith(".md")) {
+                                        val localPath = joinPaths(downloadList.path, fileInfo.name)
+                                        !checkFileExists(recursosUri, localPath, fileInfo.size)
+                                    } else {
+                                        false
+                                    }
+                                }
+                                missingFilesCount += missingLyrics.size
+                            }
+                        }
+
+                        if (!summonPath.isNullOrEmpty() || !lyricSummonPath.isNullOrEmpty()) {
+                            isDownloaded = missingFilesCount == 0
+                        }
+
+                        val hasSidecar = if (isDownloaded && !path.isNullOrEmpty() && recursosUri != null) {
+                            checkSidecarExists(recursosUri, path)
+                        } else {
+                            false
+                        }
+
+                        val duration = if (isDownloaded && !path.isNullOrEmpty() && recursosUri != null) {
+                            getVideoDuration(recursosUri, path)
+                        } else {
+                            null
+                        }
+
+                        val hasUserSelection = titleMaterial != "[User selection]"
+                        val isPlayed = datetimeRange.isNotEmpty()
+
+                        val fileUri = if (isDownloaded && !path.isNullOrEmpty() && recursosUri != null) {
+                            getFileUri(recursosUri, path)
+                        } else {
+                            null
+                        }
+
+                        val thumbnailUri = if (hasUserSelection && isDownloaded && fileUri != null && isVideo(path ?: "")) {
+                            ThumbnailGenerator.getThumbnail(context, fileUri)
+                        } else {
+                            null
+                        }
+
+                        MaterialUiModel(
+                            index = index,
+                            title = if (hasUserSelection) titleMaterial else "No seleccionado",
+                            originalFileName = path?.substringAfterLast('/'),
+                            path = path,
+                            summonPath = summonPath,
+                            lyricSummonPath = lyricSummonPath,
+                            isDownloaded = isDownloaded,
+                            duration = duration,
+                            hasSidecar = hasSidecar,
+                            hasUserSelection = hasUserSelection,
+                            isPlayed = isPlayed,
+                            uri = fileUri,
+                            thumbnailUri = thumbnailUri,
+                            missingFilesCount = missingFilesCount
+                        )
+                    }
+                }.awaitAll()
+            }
+
+            _uiState.update {
+                it.copy(
+                    journalId = journalResponse.id,
+                    name = journalResponse.nombre,
+                    expectedDate = try {
+                        LocalDate.parse(journalResponse.fecha_esperada).atStartOfDay().toInstant(ZoneOffset.UTC).toEpochMilli()
+                    } catch (e: Exception) {
+                        0L
+                    },
+                    status = journalResponse.estado,
+                    updatedAt = try {
+                        OffsetDateTime.parse(journalResponse.updated_at).toInstant().toEpochMilli()
+                    } catch (e: Exception) {
+                        0L
+                    },
+                    materials = materials,
+                )
+            }
+        } catch (e: Exception) {
+            _uiState.update { it.copy(error = e.message) }
         }
     }
 
@@ -269,8 +273,10 @@ class JournalDetailViewModel @Inject constructor(
             val treeUri = Uri.parse(recursosUri)
             val file = treeUri.findFileByPath(context, path)
             if (file?.exists() == true) {
+                val size = file.length()
+                if (size == 0L) return false
                 if (expectedSize != null && expectedSize > 0) {
-                    file.length() == expectedSize
+                    size == expectedSize
                 } else {
                     true
                 }
@@ -341,6 +347,14 @@ class JournalDetailViewModel @Inject constructor(
     fun downloadMaterials() {
         viewModelScope.launch {
             try {
+                // If nothing is missing, it behaves as "Verify existences"
+                if (!_uiState.value.canDownload) {
+                    refreshJournalDetail()
+                }
+
+                // If after refresh (or if it was already missing) there are materials to download, proceed
+                if (!_uiState.value.canDownload) return@launch
+
                 val prefs = preferencesRepository.applicationPreferences.first()
                 val recursosUri = prefs.recursosUri ?: throw Exception("Recursos URI not configured")
                 val port = prefs.serverPort
