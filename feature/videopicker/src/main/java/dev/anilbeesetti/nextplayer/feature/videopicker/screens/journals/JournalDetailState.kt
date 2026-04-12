@@ -8,6 +8,7 @@ data class MaterialUiModel(
     val originalFileName: String?,
     val path: String?,
     val summonPath: String?,
+    val lyricSummonPath: String? = null,
     val isDownloaded: Boolean,
     val duration: String?,
     val hasSidecar: Boolean,
@@ -33,7 +34,7 @@ data class JournalDetailUiState(
     val error: String? = null,
 ) {
     val canDownload: Boolean
-        get() = materials.any { !it.isDownloaded && (it.hasUserSelection || !it.summonPath.isNullOrEmpty()) }
+        get() = materials.any { !it.isDownloaded && (it.hasUserSelection || !it.summonPath.isNullOrEmpty() || !it.lyricSummonPath.isNullOrEmpty()) }
 
     val canExecute: Boolean
         get() = materials.all { it.isDownloaded || !it.hasUserSelection } && materials.any { it.isDownloaded }

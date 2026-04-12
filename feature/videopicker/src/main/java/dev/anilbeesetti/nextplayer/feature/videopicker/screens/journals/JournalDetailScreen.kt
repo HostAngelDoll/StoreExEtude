@@ -225,6 +225,14 @@ fun MaterialItem(material: MaterialUiModel) {
         },
         supportingContent = {
             Column {
+                if (!material.summonPath.isNullOrEmpty()) {
+                    Text(
+                        text = material.summonPath,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.outline
+                    )
+                }
+
                 if (material.isDownloaded && material.originalFileName != null) {
                     Text(
                         text = material.originalFileName,
@@ -237,19 +245,14 @@ fun MaterialItem(material: MaterialUiModel) {
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error
                     )
-                } else if (!material.hasUserSelection && material.summonPath != null) {
+                }
+
+                if (material.summonPath != null && material.missingFilesCount > 0) {
                     Text(
-                        text = material.summonPath,
+                        text = "Faltan archivos por descargar",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.outline
+                        color = MaterialTheme.colorScheme.error
                     )
-                    if (material.missingFilesCount > 0) {
-                        Text(
-                            text = "Faltan archivos por descargar",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                    }
                 }
 
                 Row(

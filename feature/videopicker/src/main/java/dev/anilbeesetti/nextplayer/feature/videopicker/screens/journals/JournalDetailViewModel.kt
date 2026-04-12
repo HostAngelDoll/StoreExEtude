@@ -86,6 +86,7 @@ class JournalDetailViewModel @Inject constructor(
     private fun observeDownloadProgress() {
         viewModelScope.launch {
             downloadService?.progress?.collect { progress ->
+                val wasDownloading = _uiState.value.isDownloading
                 _uiState.update {
                     it.copy(
                         isDownloading = progress.isDownloading,
@@ -94,7 +95,7 @@ class JournalDetailViewModel @Inject constructor(
                         overallProgress = progress.overallProgress
                     )
                 }
-                if (!progress.isDownloading && _uiState.value.isDownloading) {
+                if (wasDownloading && !progress.isDownloading) {
                     loadJournalDetail()
                 }
             }
@@ -136,6 +137,7 @@ class JournalDetailViewModel @Inject constructor(
                             val titleMaterial = materialJson["title_material"]?.jsonPrimitive?.contentOrNull ?: ""
                             val path = materialJson["path"]?.jsonPrimitive?.contentOrNull
                             val summonPath = materialJson["summon_path"]?.jsonPrimitive?.contentOrNull
+                            val lyricSummonPath = materialJson["lyric_summon_path"]?.jsonPrimitive?.contentOrNull
                             val datetimeRange = materialJson["datetime_range_utc_06"]?.jsonPrimitive?.contentOrNull ?: ""
 
                             var isDownloaded = false
@@ -151,10 +153,28 @@ class JournalDetailViewModel @Inject constructor(
                                             val localPath = joinPaths(downloadList.path, fileInfo.name)
                                             !checkFileExists(recursosUri, localPath, fileInfo.size)
                                         }
-                                        missingFilesCount = missingFiles.size
-                                        isDownloaded = missingFilesCount == 0
+                                        missingFilesCount += missingFiles.size
                                     }
                                 }
+                            }
+
+                            if (!lyricSummonPath.isNullOrEmpty() && recursosUri != null && ip != null) {
+                                val downloadList = client.getDownloadList(ip, port, lyricSummonPath)
+                                if (downloadList != null) {
+                                    val missingLyrics = downloadList.files.filter { fileInfo ->
+                                        if (fileInfo.name.lowercase().endsWith(".txt") || fileInfo.name.lowercase().endsWith(".md")) {
+                                            val localPath = joinPaths(downloadList.path, fileInfo.name)
+                                            !checkFileExists(recursosUri, localPath, fileInfo.size)
+                                        } else {
+                                            false
+                                        }
+                                    }
+                                    missingFilesCount += missingLyrics.size
+                                }
+                            }
+
+                            if (!summonPath.isNullOrEmpty() || !lyricSummonPath.isNullOrEmpty()) {
+                                isDownloaded = missingFilesCount == 0
                             }
 
                             val hasSidecar = if (isDownloaded && !path.isNullOrEmpty() && recursosUri != null) {
@@ -190,6 +210,7 @@ class JournalDetailViewModel @Inject constructor(
                                 originalFileName = path?.substringAfterLast('/'),
                                 path = path,
                                 summonPath = summonPath,
+                                lyricSummonPath = lyricSummonPath,
                                 isDownloaded = isDownloaded,
                                 duration = duration,
                                 hasSidecar = hasSidecar,
@@ -332,20 +353,34 @@ class JournalDetailViewModel @Inject constructor(
                 if (ip == null) throw Exception("Server not found")
 
                 val materialsToDownload = _uiState.value.materials.filter {
-                    !it.isDownloaded && (it.hasUserSelection || !it.summonPath.isNullOrEmpty())
+                    !it.isDownloaded && (it.hasUserSelection || !it.summonPath.isNullOrEmpty() || !it.lyricSummonPath.isNullOrEmpty())
                 }
 
                 val pathsToDownload = mutableListOf<String>()
                 for (material in materialsToDownload) {
                     if (!material.path.isNullOrEmpty()) {
                         pathsToDownload.add(material.path)
-                    } else if (!material.summonPath.isNullOrEmpty()) {
+                    }
+                    if (!material.summonPath.isNullOrEmpty()) {
                         val downloadList = client.getDownloadList(ip, port, material.summonPath)
                         if (downloadList != null) {
                             for (fileInfo in downloadList.files) {
                                 val localPath = joinPaths(downloadList.path, fileInfo.name)
                                 if (!checkFileExists(recursosUri, localPath, fileInfo.size)) {
                                     pathsToDownload.add(localPath)
+                                }
+                            }
+                        }
+                    }
+                    if (!material.lyricSummonPath.isNullOrEmpty()) {
+                        val downloadList = client.getDownloadList(ip, port, material.lyricSummonPath)
+                        if (downloadList != null) {
+                            for (fileInfo in downloadList.files) {
+                                if (fileInfo.name.lowercase().endsWith(".txt") || fileInfo.name.lowercase().endsWith(".md")) {
+                                    val localPath = joinPaths(downloadList.path, fileInfo.name)
+                                    if (!checkFileExists(recursosUri, localPath, fileInfo.size)) {
+                                        pathsToDownload.add(localPath)
+                                    }
                                 }
                             }
                         }
