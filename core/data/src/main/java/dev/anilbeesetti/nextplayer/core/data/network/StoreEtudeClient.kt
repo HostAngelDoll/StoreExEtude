@@ -23,6 +23,18 @@ data class PingResponse(val name: String, val version: String? = null)
 data class SyncResponse(val journals: List<JournalResponse>)
 
 @Serializable
+data class DownloadListResponse(
+    val path: String,
+    val files: List<FileInfo>
+)
+
+@Serializable
+data class FileInfo(
+    val name: String,
+    val size: Long
+)
+
+@Serializable
 data class JournalResponse(
     val id: String,
     val nombre: String,
@@ -94,6 +106,50 @@ class StoreEtudeClient @Inject constructor() {
         } catch (e: Exception) {
             Logger.logError(TAG, "Sync failed for $url: ${e.message}")
             null
+        }
+    }
+
+    suspend fun getDownloadList(ip: String, port: Int, path: String): DownloadListResponse? {
+        val url = "http://$ip:$port/download/list"
+        return try {
+            client.get(url) {
+                parameter("path", path)
+            }.body()
+        } catch (e: Exception) {
+            Logger.logError(TAG, "Download list failed for $url?path=$path: ${e.message}")
+            null
+        }
+    }
+
+    suspend fun downloadFile(ip: String, port: Int, path: String): HttpStatement {
+        val url = "http://$ip:$port/downloads"
+        return client.prepareGet(url) {
+            parameter("path", path)
+            timeout {
+                requestTimeoutMillis = Long.MAX_VALUE
+                socketTimeoutMillis = Long.MAX_VALUE
+                connectTimeoutMillis = 30000
+            }
+        }
+    }
+
+    suspend fun downloadFileWithProgress(
+        ip: String,
+        port: Int,
+        path: String,
+        onProgress: (Long, Long) -> Unit
+    ): HttpStatement {
+        val url = "http://$ip:$port/downloads"
+        return client.prepareGet(url) {
+            parameter("path", path)
+            onDownload { bytesSentTotal, contentLength ->
+                onProgress(bytesSentTotal, contentLength ?: 0L)
+            }
+            timeout {
+                requestTimeoutMillis = Long.MAX_VALUE
+                socketTimeoutMillis = Long.MAX_VALUE
+                connectTimeoutMillis = 30000
+            }
         }
     }
 }

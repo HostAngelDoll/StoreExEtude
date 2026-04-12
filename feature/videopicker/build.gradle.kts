@@ -45,6 +45,7 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.documentfile)
+    implementation(libs.ktor.client.core)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.google.android.material)
 
@@ -59,6 +60,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtimeCompose)
 
     implementation(libs.coil.compose)
+    implementation(libs.coil.network.okhttp)
     implementation(libs.accompanist.permissions)
 
     // Hilt

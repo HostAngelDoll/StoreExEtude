@@ -7,13 +7,28 @@ import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import android.content.ComponentName
+import android.content.Intent
+import android.content.ServiceConnection
+import android.os.IBinder
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import dev.anilbeesetti.nextplayer.core.common.ThumbnailGenerator
+import dev.anilbeesetti.nextplayer.core.common.extensions.findFileByPath
+import dev.anilbeesetti.nextplayer.core.common.extensions.getOrCreateFileByPath
+import dev.anilbeesetti.nextplayer.core.data.network.DownloadService
 import dev.anilbeesetti.nextplayer.core.data.network.JournalResponse
+import dev.anilbeesetti.nextplayer.core.data.network.ServerScanner
+import dev.anilbeesetti.nextplayer.core.data.network.StoreEtudeClient
 import dev.anilbeesetti.nextplayer.core.data.network.SyncResponse
 import dev.anilbeesetti.nextplayer.core.data.repository.PreferencesRepository
 import dev.anilbeesetti.nextplayer.feature.videopicker.navigation.JournalDetailRoute
+import io.ktor.client.statement.bodyAsChannel
+import io.ktor.utils.io.copyAndClose
+import io.ktor.utils.io.jvm.javaio.toInputStream
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -34,6 +49,8 @@ class JournalDetailViewModel @Inject constructor(
     private val savedStateHandle: SavedStateHandle,
     @ApplicationContext private val context: Context,
     private val preferencesRepository: PreferencesRepository,
+    private val client: StoreEtudeClient,
+    private val serverScanner: ServerScanner,
 ) : ViewModel() {
 
     private val journalId: String = savedStateHandle.get<String>("journalId") ?: ""
@@ -43,8 +60,50 @@ class JournalDetailViewModel @Inject constructor(
 
     private val json = Json { ignoreUnknownKeys = true }
 
+    private var downloadService: DownloadService? = null
+    private val serviceConnection = object : ServiceConnection {
+        override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+            val binder = service as DownloadService.LocalBinder
+            downloadService = binder.getService()
+            observeDownloadProgress()
+        }
+
+        override fun onServiceDisconnected(name: ComponentName?) {
+            downloadService = null
+        }
+    }
+
     init {
         loadJournalDetail()
+        bindDownloadService()
+    }
+
+    private fun bindDownloadService() {
+        val intent = Intent(context, DownloadService::class.java)
+        context.bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
+    }
+
+    private fun observeDownloadProgress() {
+        viewModelScope.launch {
+            downloadService?.progress?.collect { progress ->
+                _uiState.update {
+                    it.copy(
+                        isDownloading = progress.isDownloading,
+                        currentFileName = progress.currentFileName,
+                        fileProgress = progress.fileProgress,
+                        overallProgress = progress.overallProgress
+                    )
+                }
+                if (!progress.isDownloading && _uiState.value.isDownloading) {
+                    loadJournalDetail()
+                }
+            }
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        context.unbindService(serviceConnection)
     }
 
     fun loadJournalDetail() {
@@ -69,53 +128,79 @@ class JournalDetailViewModel @Inject constructor(
                 }
 
                 val materials = withContext(Dispatchers.IO) {
+                    val port = prefs.serverPort
+                    val ip = prefs.manualServerIp ?: prefs.lastServerIp
+
                     journalResponse.materiales.mapIndexed { index, materialJson ->
-                        val titleMaterial = materialJson["title_material"]?.jsonPrimitive?.contentOrNull ?: ""
-                        val path = materialJson["path"]?.jsonPrimitive?.contentOrNull
-                        val summonPath = materialJson["summon_path"]?.jsonPrimitive?.contentOrNull
-                        val datetimeRange = materialJson["datetime_range_utc_06"]?.jsonPrimitive?.contentOrNull ?: ""
+                        async {
+                            val titleMaterial = materialJson["title_material"]?.jsonPrimitive?.contentOrNull ?: ""
+                            val path = materialJson["path"]?.jsonPrimitive?.contentOrNull
+                            val summonPath = materialJson["summon_path"]?.jsonPrimitive?.contentOrNull
+                            val datetimeRange = materialJson["datetime_range_utc_06"]?.jsonPrimitive?.contentOrNull ?: ""
 
-                        val isDownloaded = if (!path.isNullOrEmpty() && recursosUri != null) {
-                            checkFileExists(recursosUri, path)
-                        } else {
-                            false
+                            var isDownloaded = false
+                            var missingFilesCount = 0
+
+                            if (!path.isNullOrEmpty() && recursosUri != null) {
+                                isDownloaded = checkFileExists(recursosUri, path)
+                            } else if (!summonPath.isNullOrEmpty() && recursosUri != null) {
+                                if (ip != null) {
+                                    val downloadList = client.getDownloadList(ip, port, summonPath)
+                                    if (downloadList != null) {
+                                        val missingFiles = downloadList.files.filter { fileInfo ->
+                                            val localPath = joinPaths(downloadList.path, fileInfo.name)
+                                            !checkFileExists(recursosUri, localPath, fileInfo.size)
+                                        }
+                                        missingFilesCount = missingFiles.size
+                                        isDownloaded = missingFilesCount == 0
+                                    }
+                                }
+                            }
+
+                            val hasSidecar = if (isDownloaded && !path.isNullOrEmpty() && recursosUri != null) {
+                                checkSidecarExists(recursosUri, path)
+                            } else {
+                                false
+                            }
+
+                            val duration = if (isDownloaded && !path.isNullOrEmpty() && recursosUri != null) {
+                                getVideoDuration(recursosUri, path)
+                            } else {
+                                null
+                            }
+
+                            val hasUserSelection = titleMaterial != "[User selection]"
+                            val isPlayed = datetimeRange.isNotEmpty()
+
+                            val fileUri = if (isDownloaded && !path.isNullOrEmpty() && recursosUri != null) {
+                                getFileUri(recursosUri, path)
+                            } else {
+                                null
+                            }
+
+                            val thumbnailUri = if (hasUserSelection && isDownloaded && fileUri != null && isVideo(path ?: "")) {
+                                ThumbnailGenerator.getThumbnail(context, fileUri)
+                            } else {
+                                null
+                            }
+
+                            MaterialUiModel(
+                                index = index,
+                                title = if (hasUserSelection) titleMaterial else "No seleccionado",
+                                originalFileName = path?.substringAfterLast('/'),
+                                path = path,
+                                summonPath = summonPath,
+                                isDownloaded = isDownloaded,
+                                duration = duration,
+                                hasSidecar = hasSidecar,
+                                hasUserSelection = hasUserSelection,
+                                isPlayed = isPlayed,
+                                uri = fileUri,
+                                thumbnailUri = thumbnailUri,
+                                missingFilesCount = missingFilesCount
+                            )
                         }
-
-                        val hasSidecar = if (isDownloaded && !path.isNullOrEmpty() && recursosUri != null) {
-                            checkSidecarExists(recursosUri, path)
-                        } else {
-                            false
-                        }
-
-                        val duration = if (isDownloaded && !path.isNullOrEmpty() && recursosUri != null) {
-                            getVideoDuration(recursosUri, path)
-                        } else {
-                            null
-                        }
-
-                        val hasUserSelection = titleMaterial != "[User selection]"
-                        val isPlayed = datetimeRange.isNotEmpty()
-
-                        val fileUri = if (isDownloaded && !path.isNullOrEmpty() && recursosUri != null) {
-                            getFileUri(recursosUri, path)
-                        } else {
-                            null
-                        }
-
-                        MaterialUiModel(
-                            index = index,
-                            title = if (hasUserSelection) titleMaterial else "No seleccionado",
-                            originalFileName = path?.substringAfterLast('/'),
-                            path = path,
-                            summonPath = summonPath,
-                            isDownloaded = isDownloaded,
-                            duration = duration,
-                            hasSidecar = hasSidecar,
-                            hasUserSelection = hasUserSelection,
-                            isPlayed = isPlayed,
-                            uri = fileUri
-                        )
-                    }
+                    }.awaitAll()
                 }
 
                 _uiState.update {
@@ -158,13 +243,26 @@ class JournalDetailViewModel @Inject constructor(
         }
     }
 
-    private fun checkFileExists(recursosUri: String, path: String): Boolean {
+    private fun checkFileExists(recursosUri: String, path: String, expectedSize: Long? = null): Boolean {
         return try {
-            val file = findFileByPath(recursosUri, path)
-            file?.exists() == true
+            val treeUri = Uri.parse(recursosUri)
+            val file = treeUri.findFileByPath(context, path)
+            if (file?.exists() == true) {
+                if (expectedSize != null && expectedSize > 0) {
+                    file.length() == expectedSize
+                } else {
+                    true
+                }
+            } else {
+                false
+            }
         } catch (e: Exception) {
             false
         }
+    }
+
+    private fun joinPaths(base: String, name: String): String {
+        return "${base.trimEnd('/')}/${name.trimStart('/')}"
     }
 
     private fun checkSidecarExists(recursosUri: String, path: String): Boolean {
@@ -173,22 +271,13 @@ class JournalDetailViewModel @Inject constructor(
     }
 
     private fun getFileUri(recursosUri: String, path: String): Uri? {
-        return findFileByPath(recursosUri, path)?.uri
-    }
-
-    private fun findFileByPath(recursosUri: String, path: String): DocumentFile? {
         val treeUri = Uri.parse(recursosUri)
-        var currentDir = DocumentFile.fromTreeUri(context, treeUri) ?: return null
-
-        val segments = path.split("/").filter { it.isNotEmpty() }
-        for (i in 0 until segments.size - 1) {
-            currentDir = currentDir.findFile(segments[i]) ?: return null
-        }
-        return currentDir.findFile(segments.last())
+        return treeUri.findFileByPath(context, path)?.uri
     }
 
     private fun getVideoDuration(recursosUri: String, path: String): String? {
-        val file = findFileByPath(recursosUri, path) ?: return null
+        val treeUri = Uri.parse(recursosUri)
+        val file = treeUri.findFileByPath(context, path) ?: return null
         val retriever = MediaMetadataRetriever()
         return try {
             retriever.setDataSource(context, file.uri)
@@ -226,5 +315,58 @@ class JournalDetailViewModel @Inject constructor(
     fun executeJournal(onPlay: (Uri) -> Unit) {
         val firstPlayable = _uiState.value.materials.firstOrNull { it.isDownloaded && !it.path.isNullOrEmpty() && it.uri != null }
         firstPlayable?.uri?.let { onPlay(it) }
+    }
+
+    fun downloadMaterials() {
+        viewModelScope.launch {
+            try {
+                val prefs = preferencesRepository.applicationPreferences.first()
+                val recursosUri = prefs.recursosUri ?: throw Exception("Recursos URI not configured")
+                val port = prefs.serverPort
+                var ip = prefs.manualServerIp ?: prefs.lastServerIp
+
+                if (ip == null) {
+                    ip = serverScanner.scan(port)
+                }
+
+                if (ip == null) throw Exception("Server not found")
+
+                val materialsToDownload = _uiState.value.materials.filter {
+                    !it.isDownloaded && (it.hasUserSelection || !it.summonPath.isNullOrEmpty())
+                }
+
+                val pathsToDownload = mutableListOf<String>()
+                for (material in materialsToDownload) {
+                    if (!material.path.isNullOrEmpty()) {
+                        pathsToDownload.add(material.path)
+                    } else if (!material.summonPath.isNullOrEmpty()) {
+                        val downloadList = client.getDownloadList(ip, port, material.summonPath)
+                        if (downloadList != null) {
+                            for (fileInfo in downloadList.files) {
+                                val localPath = joinPaths(downloadList.path, fileInfo.name)
+                                if (!checkFileExists(recursosUri, localPath, fileInfo.size)) {
+                                    pathsToDownload.add(localPath)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (pathsToDownload.isNotEmpty()) {
+                    DownloadService.start(context, ip, port, recursosUri, pathsToDownload)
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = e.message) }
+            }
+        }
+    }
+
+    fun stopDownloads() {
+        DownloadService.stop(context)
+    }
+
+    private fun isVideo(path: String): Boolean {
+        val extensions = listOf(".mp4", ".mkv", ".mov", ".webm")
+        return extensions.any { path.lowercase().endsWith(it) }
     }
 }

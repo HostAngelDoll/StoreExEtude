@@ -14,6 +14,8 @@ data class MaterialUiModel(
     val hasUserSelection: Boolean,
     val isPlayed: Boolean,
     val uri: Uri?,
+    val thumbnailUri: Uri? = null,
+    val missingFilesCount: Int = 0,
 )
 
 data class JournalDetailUiState(
@@ -24,10 +26,14 @@ data class JournalDetailUiState(
     val updatedAt: Long = 0,
     val materials: List<MaterialUiModel> = emptyList(),
     val isLoading: Boolean = false,
+    val isDownloading: Boolean = false,
+    val currentFileName: String? = null,
+    val fileProgress: Float = 0f,
+    val overallProgress: Float = 0f,
     val error: String? = null,
 ) {
     val canDownload: Boolean
-        get() = materials.any { !it.isDownloaded && it.hasUserSelection }
+        get() = materials.any { !it.isDownloaded && (it.hasUserSelection || !it.summonPath.isNullOrEmpty()) }
 
     val canExecute: Boolean
         get() = materials.all { it.isDownloaded || !it.hasUserSelection } && materials.any { it.isDownloaded }
