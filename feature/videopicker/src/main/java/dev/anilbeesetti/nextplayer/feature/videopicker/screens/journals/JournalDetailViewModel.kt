@@ -159,39 +159,53 @@ class JournalDetailViewModel @Inject constructor(
 
                     var isDownloaded = false
                     var missingFilesCount = 0
+                    val isUnselected = titleMaterial == "[User selection]"
 
-                    if (!path.isNullOrEmpty() && recursosUri != null) {
-                        isDownloaded = checkFileExists(recursosUri, path)
-                    } else if (!summonPath.isNullOrEmpty() && recursosUri != null) {
-                        if (ip != null) {
-                            val downloadList = client.getDownloadList(ip, port, summonPath)
+                    if (isUnselected && recursosUri != null) {
+                        val summonPathValid = if (!summonPath.isNullOrEmpty()) {
+                            checkFolderHasValidFiles(recursosUri, summonPath)
+                        } else true
+
+                        val lyricPathValid = if (!lyricSummonPath.isNullOrEmpty()) {
+                            checkFolderHasValidFiles(recursosUri, lyricSummonPath, listOf(".txt", ".md"))
+                        } else true
+
+                        isDownloaded = summonPathValid && lyricPathValid
+                        missingFilesCount = if (isDownloaded) 0 else 1 // Dummy count to trigger download
+                    } else {
+                        if (!path.isNullOrEmpty() && recursosUri != null) {
+                            isDownloaded = checkFileExists(recursosUri, path)
+                        } else if (!summonPath.isNullOrEmpty() && recursosUri != null) {
+                            if (ip != null) {
+                                val downloadList = client.getDownloadList(ip, port, summonPath)
+                                if (downloadList != null) {
+                                    val missingFiles = downloadList.files.filter { fileInfo ->
+                                        val localPath = joinPaths(downloadList.path, fileInfo.name)
+                                        !checkFileExists(recursosUri, localPath, fileInfo.size)
+                                    }
+                                    missingFilesCount += missingFiles.size
+                                }
+                            }
+                        }
+
+                        if (!lyricSummonPath.isNullOrEmpty() && recursosUri != null && ip != null) {
+                            val downloadList = client.getDownloadList(ip, port, lyricSummonPath)
                             if (downloadList != null) {
-                                val missingFiles = downloadList.files.filter { fileInfo ->
-                                    val localPath = joinPaths(downloadList.path, fileInfo.name)
-                                    !checkFileExists(recursosUri, localPath, fileInfo.size)
+                                val missingLyrics = downloadList.files.filter { fileInfo ->
+                                    if (fileInfo.name.lowercase().endsWith(".txt") || fileInfo.name.lowercase().endsWith(".md")) {
+                                        val localPath = joinPaths(downloadList.path, fileInfo.name)
+                                        !checkFileExists(recursosUri, localPath, fileInfo.size)
+                                    } else {
+                                        false
+                                    }
                                 }
-                                missingFilesCount += missingFiles.size
+                                missingFilesCount += missingLyrics.size
                             }
                         }
-                    }
 
-                    if (!lyricSummonPath.isNullOrEmpty() && recursosUri != null && ip != null) {
-                        val downloadList = client.getDownloadList(ip, port, lyricSummonPath)
-                        if (downloadList != null) {
-                            val missingLyrics = downloadList.files.filter { fileInfo ->
-                                if (fileInfo.name.lowercase().endsWith(".txt") || fileInfo.name.lowercase().endsWith(".md")) {
-                                    val localPath = joinPaths(downloadList.path, fileInfo.name)
-                                    !checkFileExists(recursosUri, localPath, fileInfo.size)
-                                } else {
-                                    false
-                                }
-                            }
-                            missingFilesCount += missingLyrics.size
+                        if (!summonPath.isNullOrEmpty() || !lyricSummonPath.isNullOrEmpty()) {
+                            isDownloaded = missingFilesCount == 0
                         }
-                    }
-
-                    if (!summonPath.isNullOrEmpty() || !lyricSummonPath.isNullOrEmpty()) {
-                        isDownloaded = missingFilesCount == 0
                     }
 
                     val hasSidecar = if (isDownloaded && !path.isNullOrEmpty() && recursosUri != null) {
@@ -290,6 +304,22 @@ class JournalDetailViewModel @Inject constructor(
                     size == expectedSize
                 } else {
                     true
+                }
+            } else {
+                false
+            }
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    private fun checkFolderHasValidFiles(recursosUri: String, path: String, extensions: List<String>? = null): Boolean {
+        return try {
+            val treeUri = Uri.parse(recursosUri)
+            val folder = treeUri.findFileByPath(context, path)
+            if (folder?.isDirectory == true) {
+                folder.listFiles().any { file ->
+                    !file.isDirectory && file.length() > 0 && (extensions == null || extensions.any { ext -> file.name?.lowercase()?.endsWith(ext) == true })
                 }
             } else {
                 false
