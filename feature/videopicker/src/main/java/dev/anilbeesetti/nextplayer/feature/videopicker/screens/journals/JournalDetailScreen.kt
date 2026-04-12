@@ -119,14 +119,14 @@ fun JournalDetailScreen(
                     }
                 }
 
-                if (uiState.isDownloading) {
+                if (uiState.isDownloading || uiState.isVerifying) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp, vertical = 8.dp)
                     ) {
                         Text(
-                            text = "Progreso jornada",
+                            text = if (uiState.isVerifying) "Verificando existencias" else "Progreso jornada",
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -136,7 +136,7 @@ fun JournalDetailScreen(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "Descargando: ${uiState.currentFileName ?: "..."}",
+                            text = if (uiState.isVerifying) "Verificando: ${uiState.currentFileName ?: "..."}" else "Descargando: ${uiState.currentFileName ?: "..."}",
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
@@ -150,7 +150,7 @@ fun JournalDetailScreen(
                 }
 
                 ActionButtons(
-                    isDownloading = uiState.isDownloading,
+                    isDownloading = uiState.isDownloading || uiState.isVerifying,
                     canDownload = uiState.canDownload,
                     canExecute = uiState.canExecute && !uiState.isDownloading,
                     canReset = uiState.canReset && !uiState.isDownloading,
@@ -311,7 +311,7 @@ fun MaterialItem(material: MaterialUiModel) {
 
 @Composable
 fun ActionButtons(
-    isDownloading: Boolean,
+    isDownloading: Boolean, // Refers to both downloading and verifying
     canDownload: Boolean,
     canExecute: Boolean,
     canReset: Boolean,
@@ -337,7 +337,7 @@ fun ActionButtons(
                     contentColor = MaterialTheme.colorScheme.onError
                 )
             ) {
-                Text("Detener descargas")
+                Text("Cancelar")
             }
         } else {
             Button(

@@ -28,6 +28,7 @@ data class JournalDetailUiState(
     val materials: List<MaterialUiModel> = emptyList(),
     val isLoading: Boolean = false,
     val isDownloading: Boolean = false,
+    val isVerifying: Boolean = false,
     val currentFileName: String? = null,
     val fileProgress: Float = 0f,
     val overallProgress: Float = 0f,
