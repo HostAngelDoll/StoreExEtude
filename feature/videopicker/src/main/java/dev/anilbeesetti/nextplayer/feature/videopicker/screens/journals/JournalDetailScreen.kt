@@ -119,14 +119,14 @@ fun JournalDetailScreen(
                     }
                 }
 
-                if (uiState.isDownloading) {
+                if (uiState.isDownloading || uiState.isVerifying) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp, vertical = 8.dp)
                     ) {
                         Text(
-                            text = "Progreso jornada",
+                            text = if (uiState.isVerifying) "Verificando existencias" else "Progreso jornada",
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -136,7 +136,7 @@ fun JournalDetailScreen(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "Descargando: ${uiState.currentFileName ?: "..."}",
+                            text = if (uiState.isVerifying) "Verificando: ${uiState.currentFileName ?: "..."}" else "Descargando: ${uiState.currentFileName ?: "..."}",
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
@@ -150,7 +150,7 @@ fun JournalDetailScreen(
                 }
 
                 ActionButtons(
-                    isDownloading = uiState.isDownloading,
+                    isDownloading = uiState.isDownloading || uiState.isVerifying,
                     canDownload = uiState.canDownload,
                     canExecute = uiState.canExecute && !uiState.isDownloading,
                     canReset = uiState.canReset && !uiState.isDownloading,
@@ -225,6 +225,14 @@ fun MaterialItem(material: MaterialUiModel) {
         },
         supportingContent = {
             Column {
+                if (!material.summonPath.isNullOrEmpty()) {
+                    Text(
+                        text = material.summonPath,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.outline
+                    )
+                }
+
                 if (material.isDownloaded && material.originalFileName != null) {
                     Text(
                         text = material.originalFileName,
@@ -237,19 +245,14 @@ fun MaterialItem(material: MaterialUiModel) {
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error
                     )
-                } else if (!material.hasUserSelection && material.summonPath != null) {
+                }
+
+                if (material.summonPath != null && material.missingFilesCount > 0) {
                     Text(
-                        text = material.summonPath,
+                        text = "Faltan archivos por descargar",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.outline
+                        color = MaterialTheme.colorScheme.error
                     )
-                    if (material.missingFilesCount > 0) {
-                        Text(
-                            text = "Faltan archivos por descargar",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                    }
                 }
 
                 Row(
@@ -308,7 +311,7 @@ fun MaterialItem(material: MaterialUiModel) {
 
 @Composable
 fun ActionButtons(
-    isDownloading: Boolean,
+    isDownloading: Boolean, // Refers to both downloading and verifying
     canDownload: Boolean,
     canExecute: Boolean,
     canReset: Boolean,
@@ -334,15 +337,15 @@ fun ActionButtons(
                     contentColor = MaterialTheme.colorScheme.onError
                 )
             ) {
-                Text("Detener descargas")
+                Text("Cancelar")
             }
         } else {
             Button(
                 onClick = onDownloadClick,
                 modifier = Modifier.fillMaxWidth(),
-                enabled = canDownload
+                enabled = true
             ) {
-                Text("Descargar materiales")
+                Text(if (canDownload) "Descargar materiales" else "Verificar existencias")
             }
         }
         Button(
