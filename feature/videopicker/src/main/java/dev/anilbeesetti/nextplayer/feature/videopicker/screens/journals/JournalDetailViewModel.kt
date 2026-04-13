@@ -166,23 +166,25 @@ class JournalDetailViewModel @Inject constructor(
                     val isUnselected = titleMaterial == "[User selection]"
 
                     if (recursosUri != null) {
-                        if (isDeepCheck) {
-                            if (isUnselected) {
-                                val summonPathValid = if (!summonPath.isNullOrEmpty()) {
-                                    checkFolderHasValidFiles(recursosUri, summonPath)
-                                } else true
+                        if (!path.isNullOrEmpty()) {
+                            // Material with specific path - Path and summon_path are mutually exclusive
+                            isDownloaded = checkFileExists(recursosUri, path)
+                            missingFilesCount = if (isDownloaded) 0 else 1
+                        } else if (isUnselected) {
+                            // Unselected material - Local validation only
+                            val summonPathValid = if (!summonPath.isNullOrEmpty()) {
+                                checkFolderHasValidFiles(recursosUri, summonPath)
+                            } else true
 
-                                val lyricPathValid = if (!lyricSummonPath.isNullOrEmpty()) {
-                                    checkFolderHasValidFiles(recursosUri, lyricSummonPath, listOf(".txt", ".md"))
-                                } else true
+                            val lyricPathValid = if (!lyricSummonPath.isNullOrEmpty()) {
+                                checkFolderHasValidFiles(recursosUri, lyricSummonPath, listOf(".txt", ".md"))
+                            } else true
 
-                                isDownloaded = summonPathValid && lyricPathValid
-                                missingFilesCount = if (isDownloaded) 0 else 1
-                            } else {
-                                if (!path.isNullOrEmpty()) {
-                                    isDownloaded = checkFileExists(recursosUri, path)
-                                }
-
+                            isDownloaded = summonPathValid && lyricPathValid
+                            missingFilesCount = if (isDownloaded) 0 else 1
+                        } else {
+                            // Other folder-based materials (e.g., soundtracks)
+                            if (isDeepCheck) {
                                 if (!summonPath.isNullOrEmpty()) {
                                     if (ip != null) {
                                         val downloadList = client.getDownloadList(ip, port, summonPath)
@@ -220,16 +222,9 @@ class JournalDetailViewModel @Inject constructor(
                                         missingFilesCount += 1
                                     }
                                 }
-
-                                if (!path.isNullOrEmpty() || !summonPath.isNullOrEmpty() || !lyricSummonPath.isNullOrEmpty()) {
-                                    isDownloaded = missingFilesCount == 0 && (path.isNullOrEmpty() || checkFileExists(recursosUri, path))
-                                }
-                            }
-                        } else {
-                            // Shallow check (initial load) - NO network calls
-                            if (!path.isNullOrEmpty()) {
-                                isDownloaded = checkFileExists(recursosUri, path)
-                            } else if (!summonPath.isNullOrEmpty() || !lyricSummonPath.isNullOrEmpty()) {
+                                isDownloaded = missingFilesCount == 0 && (!summonPath.isNullOrEmpty() || !lyricSummonPath.isNullOrEmpty())
+                            } else {
+                                // Shallow check (initial load) - NO network calls for folders
                                 isDownloaded = false
                                 missingFilesCount = 1
                             }
@@ -445,6 +440,8 @@ class JournalDetailViewModel @Inject constructor(
                 for (material in materialsToDownload) {
                     if (!material.path.isNullOrEmpty()) {
                         pathsToDownload.add(material.path)
+                        // If path is defined, we skip summon_path as they are mutually exclusive in execution
+                        continue
                     }
                     if (!material.summonPath.isNullOrEmpty()) {
                         val downloadList = client.getDownloadList(ip, port, material.summonPath)
