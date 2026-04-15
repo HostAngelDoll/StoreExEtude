@@ -68,6 +68,9 @@ class PlayerApi(val activity: PlayerActivity) {
         const val API_SUBS_NAME = "subs.name"
         const val API_PLAYLIST = "video_list"
 
+        const val API_JOURNAL_ID = "journal_id"
+        const val API_JOURNAL_MATERIAL_INDEX = "journal_material_index"
+
         const val API_RESULT_INTENT = "com.mxtech.intent.result.VIEW"
 
         private const val API_END_BY_USER = "user"

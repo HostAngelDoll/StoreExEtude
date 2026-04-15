@@ -316,4 +316,10 @@
     <string name="no_journals_available">No hay jornadas disponibles</string>
     <string name="materials">Materiales</string>
     <string name="sync">Sincronizar</string>
+    <string name="auto_play_next_material">Ejecutar siguiente material tras acabar el anterior</string>
+    <string name="continue_journal">Continuar jornada</string>
+    <string name="exit_warning_title">¿Salir de la reproducción?</string>
+    <string name="exit_warning_message">Si sale, el seguimiento de tiempo se olvidará y tendrá que empezar el material de nuevo.</string>
+    <string name="continue_button">Continuar</string>
+    <string name="execute_journal">Ejecutar jornada</string>
 </resources>

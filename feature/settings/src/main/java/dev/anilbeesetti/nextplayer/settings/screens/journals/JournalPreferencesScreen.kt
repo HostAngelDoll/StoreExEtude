@@ -38,6 +38,7 @@ fun JournalPreferencesRoute(
         onJornadasUriChange = viewModel::updateJornadasUri,
         onManualIpChange = viewModel::updateManualServerIp,
         onPortChange = viewModel::updateServerPort,
+        onAutoPlayNextMaterialChange = viewModel::updateAutoPlayNextMaterial,
         onSyncClick = viewModel::sync,
         onNavigateUp = onNavigateUp,
     )
@@ -52,6 +53,7 @@ fun JournalPreferencesScreen(
     onJornadasUriChange: (String?) -> Unit,
     onManualIpChange: (String?) -> Unit,
     onPortChange: (Int) -> Unit,
+    onAutoPlayNextMaterialChange: (Boolean) -> Unit,
     onSyncClick: () -> Unit,
     onNavigateUp: () -> Unit,
 ) {
@@ -122,6 +124,12 @@ fun JournalPreferencesScreen(
                 isChecked = uiState.syncOnAppStart,
                 onClick = { onSyncOnAppStartChange(!uiState.syncOnAppStart) },
                 isFirstItem = true,
+            )
+
+            PreferenceSwitch(
+                title = stringResource(id = R.string.auto_play_next_material),
+                isChecked = uiState.autoPlayNextMaterial,
+                onClick = { onAutoPlayNextMaterialChange(!uiState.autoPlayNextMaterial) },
             )
 
             ClickablePreferenceItem(

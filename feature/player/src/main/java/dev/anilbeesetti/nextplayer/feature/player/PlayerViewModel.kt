@@ -15,6 +15,8 @@ import dev.anilbeesetti.nextplayer.core.model.ApplicationPreferences
 import dev.anilbeesetti.nextplayer.core.model.Video
 import dev.anilbeesetti.nextplayer.core.model.VideoContentScale
 import dev.anilbeesetti.nextplayer.core.common.extensions.round
+import dev.anilbeesetti.nextplayer.core.data.network.JournalSyncManager
+import dev.anilbeesetti.nextplayer.core.data.network.SyncResponse
 import dev.anilbeesetti.nextplayer.feature.player.state.SubtitleOptionsEvent
 import dev.anilbeesetti.nextplayer.feature.player.state.VideoZoomEvent
 import javax.inject.Inject
@@ -30,6 +32,7 @@ class PlayerViewModel @Inject constructor(
     private val mediaRepository: MediaRepository,
     private val preferencesRepository: PreferencesRepository,
     private val getSortedPlaylistUseCase: GetSortedPlaylistUseCase,
+    private val journalSyncManager: JournalSyncManager,
 ) : ViewModel() {
 
     var playWhenReady: Boolean = true
@@ -188,6 +191,16 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
+    suspend fun getSyncData(): SyncResponse? {
+        val prefs = preferencesRepository.applicationPreferences.value
+        return prefs.jornadasUri?.let { journalSyncManager.readSyncData(it) }
+    }
+
+    fun updateMaterialTracking(journalId: String, materialIndex: Int, datetimeRange: String) {
+        viewModelScope.launch {
+            journalSyncManager.updateMaterialTracking(journalId, materialIndex, datetimeRange)
+        }
+    }
 }
 
 @Stable

@@ -55,6 +55,12 @@ class JournalPreferencesViewModel @Inject constructor(
         }
     }
 
+    fun updateAutoPlayNextMaterial(enabled: Boolean) {
+        viewModelScope.launch {
+            preferencesRepository.updateApplicationPreferences { it.copy(autoPlayNextMaterial = enabled) }
+        }
+    }
+
     fun sync() {
         viewModelScope.launch {
             val result = journalSyncManager.sync()

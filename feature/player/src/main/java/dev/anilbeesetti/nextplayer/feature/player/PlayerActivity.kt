@@ -8,6 +8,9 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.res.stringResource
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
@@ -36,12 +39,19 @@ import dagger.hilt.android.AndroidEntryPoint
 import dev.anilbeesetti.nextplayer.core.common.extensions.getMediaContentUri
 import dev.anilbeesetti.nextplayer.core.ui.theme.NextPlayerTheme
 import dev.anilbeesetti.nextplayer.feature.player.extensions.registerForSuspendActivityResult
+import dev.anilbeesetti.nextplayer.core.ui.components.NextDialog
 import dev.anilbeesetti.nextplayer.feature.player.extensions.setExtras
 import dev.anilbeesetti.nextplayer.feature.player.extensions.uriToSubtitleConfiguration
 import dev.anilbeesetti.nextplayer.feature.player.service.PlayerService
 import dev.anilbeesetti.nextplayer.feature.player.service.addSubtitleTrack
 import dev.anilbeesetti.nextplayer.feature.player.service.stopPlayerSession
 import dev.anilbeesetti.nextplayer.feature.player.utils.PlayerApi
+import dev.anilbeesetti.nextplayer.core.common.extensions.findFileByPath
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.JsonObject
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.guava.await
@@ -62,6 +72,11 @@ class PlayerActivity : ComponentActivity() {
     private var isPlaybackFinished = false
     private var playInBackground: Boolean = false
     private var isIntentNew: Boolean = true
+
+    private var journalId: String? = null
+    private var materialIndex: Int = -1
+    private var startTimestamp: String? = null
+    private var showExitWarning by mutableStateOf(false)
 
     /**
      * Player
@@ -122,12 +137,40 @@ class PlayerActivity : ComponentActivity() {
                                 controllerFuture?.await()?.addSubtitleTrack(uri)
                             }
                         },
-                        onBackClick = { finishAndStopPlayerSession() },
+                        onBackClick = {
+                            if (startTimestamp != null) {
+                                showExitWarning = true
+                            } else {
+                                finishAndStopPlayerSession()
+                            }
+                        },
                         onPlayInBackgroundClick = {
                             playInBackground = true
                             finish()
                         },
                     )
+
+                    if (showExitWarning) {
+                        NextDialog(
+                            onDismissRequest = { showExitWarning = false },
+                            title = { Text(stringResource(dev.anilbeesetti.nextplayer.core.ui.R.string.exit_warning_title)) },
+                            content = { Text(stringResource(dev.anilbeesetti.nextplayer.core.ui.R.string.exit_warning_message)) },
+                            confirmButton = {
+                                TextButton(onClick = {
+                                    showExitWarning = false
+                                    startTimestamp = null
+                                    finishAndStopPlayerSession()
+                                }) {
+                                    Text(stringResource(dev.anilbeesetti.nextplayer.core.ui.R.string.exit))
+                                }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { showExitWarning = false }) {
+                                    Text(stringResource(dev.anilbeesetti.nextplayer.core.ui.R.string.continue_button))
+                                }
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -182,6 +225,8 @@ class PlayerActivity : ComponentActivity() {
 
     private fun startPlayback() {
         val uri = intent.data ?: return
+        journalId = intent.getStringExtra(PlayerApi.API_JOURNAL_ID)
+        materialIndex = intent.getIntExtra(PlayerApi.API_JOURNAL_MATERIAL_INDEX, -1)
 
         val returningFromBackground = !isIntentNew && mediaController?.currentMediaItem != null
         val isNewUriTheCurrentMediaItem = mediaController?.currentMediaItem?.localConfiguration?.uri.toString() == uri.toString()
@@ -264,6 +309,12 @@ class PlayerActivity : ComponentActivity() {
             if (uri != null) {
                 viewModel.loadVideoNotes(uri, this@PlayerActivity)
             }
+
+            if (journalId != null && materialIndex != -1) {
+                startTimestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+            } else {
+                startTimestamp = null
+            }
         }
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -276,7 +327,7 @@ class PlayerActivity : ComponentActivity() {
             when (playbackState) {
                 Player.STATE_ENDED -> {
                     isPlaybackFinished = mediaController?.playbackState == Player.STATE_ENDED
-                    finishAndStopPlayerSession()
+                    onMaterialEnded()
                 }
 
                 else -> {}
@@ -289,8 +340,53 @@ class PlayerActivity : ComponentActivity() {
             if (reason == Player.PLAY_WHEN_READY_CHANGE_REASON_END_OF_MEDIA_ITEM) {
                 if (mediaController?.repeatMode != Player.REPEAT_MODE_OFF) return
                 isPlaybackFinished = true
+                onMaterialEnded()
+            }
+        }
+    }
+
+    private var isProcessingEnd = false
+
+    private fun onMaterialEnded() {
+        if (isProcessingEnd) return
+        if (journalId != null && materialIndex != -1 && startTimestamp != null) {
+            isProcessingEnd = true
+            val endTimestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss"))
+            val datetimeRange = "$startTimestamp-$endTimestamp"
+            viewModel.updateMaterialTracking(journalId!!, materialIndex, datetimeRange)
+            startTimestamp = null
+
+            if (viewModel.uiState.value.applicationPreferences?.autoPlayNextMaterial == true) {
+                lifecycleScope.launch {
+                    val syncData = viewModel.getSyncData()
+                    val journal = syncData?.journals?.find { it.id == journalId }
+                    val nextMaterialIndex = materialIndex + 1
+                    if (journal != null && nextMaterialIndex < journal.materiales.size) {
+                        val nextMaterial = journal.materiales[nextMaterialIndex]
+                        val nextPath = nextMaterial["path"]?.jsonPrimitive?.contentOrNull
+                        val nextTitle = nextMaterial["title_material"]?.jsonPrimitive?.contentOrNull
+                        val nextUri = if (!nextPath.isNullOrEmpty()) {
+                            val recursosUri = viewModel.uiState.value.applicationPreferences?.recursosUri
+                            if (recursosUri != null) {
+                                val treeUri = Uri.parse(recursosUri)
+                                treeUri.findFileByPath(this@PlayerActivity, nextPath)?.uri
+                            } else null
+                        } else null
+
+                        if (nextUri != null) {
+                            materialIndex = nextMaterialIndex
+                            isProcessingEnd = false
+                            playVideo(nextUri)
+                            return@launch
+                        }
+                    }
+                    finishAndStopPlayerSession()
+                }
+            } else {
                 finishAndStopPlayerSession()
             }
+        } else if (startTimestamp == null && !isProcessingEnd) {
+            finishAndStopPlayerSession()
         }
     }
 

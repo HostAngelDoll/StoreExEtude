@@ -47,6 +47,7 @@ data class ApplicationPreferences(
     val lastServerIp: String? = null,
     val manualServerIp: String? = null,
     val serverPort: Int = 9090,
+    val autoPlayNextMaterial: Boolean = false,
 ) {
 
     companion object {

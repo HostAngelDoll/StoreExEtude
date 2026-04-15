@@ -53,6 +53,7 @@ fun NavController.navigateToJournalDetailScreen(
 fun NavGraphBuilder.mediaPickerScreen(
     onNavigateUp: () -> Unit,
     onPlayVideo: (uri: Uri) -> Unit,
+    onPlayJournalVideo: (uri: Uri, journalId: String, materialIndex: Int) -> Unit,
     onPlayVideos: (uris: List<Uri>) -> Unit,
     onFolderClick: (folderPath: String) -> Unit,
     onSettingsClick: () -> Unit,
@@ -83,7 +84,9 @@ fun NavGraphBuilder.mediaPickerScreen(
     composable<JournalDetailRoute> {
         JournalDetailRoute(
             onNavigateUp = onNavigateUp,
-            onPlayVideo = onPlayVideo,
+            onPlayVideo = { uri, journalId, materialIndex ->
+                onPlayJournalVideo(uri, journalId, materialIndex)
+            },
         )
     }
 }
