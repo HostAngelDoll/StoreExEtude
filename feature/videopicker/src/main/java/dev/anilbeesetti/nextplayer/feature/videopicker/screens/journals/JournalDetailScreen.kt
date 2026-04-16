@@ -53,7 +53,7 @@ import dev.anilbeesetti.nextplayer.feature.videopicker.composables.InfoChip
 fun JournalDetailRoute(
     viewModel: JournalDetailViewModel = hiltViewModel(),
     onNavigateUp: () -> Unit,
-    onPlayVideo: (Uri) -> Unit,
+    onPlayVideo: (Uri, String, Int) -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -61,6 +61,7 @@ fun JournalDetailRoute(
         uiState = uiState,
         onNavigateUp = onNavigateUp,
         onExecuteClick = { viewModel.executeJournal(onPlayVideo) },
+        hasProgress = uiState.hasProgress,
         onResetClick = viewModel::resetJournal,
         onDownloadClick = viewModel::downloadMaterials,
         onStopDownloadClick = viewModel::stopDownloads,
@@ -74,6 +75,7 @@ fun JournalDetailScreen(
     uiState: JournalDetailUiState,
     onNavigateUp: () -> Unit,
     onExecuteClick: () -> Unit,
+    hasProgress: Boolean,
     onResetClick: () -> Unit,
     onDownloadClick: () -> Unit,
     onStopDownloadClick: () -> Unit,
@@ -153,6 +155,7 @@ fun JournalDetailScreen(
                     isDownloading = uiState.isDownloading || uiState.isVerifying,
                     canDownload = uiState.canDownload,
                     canExecute = uiState.canExecute && !uiState.isDownloading,
+                    hasProgress = hasProgress,
                     canReset = uiState.canReset && !uiState.isDownloading,
                     canUpload = uiState.canUpload && !uiState.isDownloading,
                     onDownloadClick = onDownloadClick,
@@ -314,6 +317,7 @@ fun ActionButtons(
     isDownloading: Boolean, // Refers to both downloading and verifying
     canDownload: Boolean,
     canExecute: Boolean,
+    hasProgress: Boolean,
     canReset: Boolean,
     canUpload: Boolean,
     onDownloadClick: () -> Unit,
@@ -357,7 +361,7 @@ fun ActionButtons(
                 contentColor = MaterialTheme.colorScheme.onPrimaryContainer
             )
         ) {
-            Text("Ejecutar jornada")
+            Text(if (hasProgress) stringResource(R.string.continue_journal) else stringResource(R.string.execute_journal))
         }
         Row(
             modifier = Modifier.fillMaxWidth(),

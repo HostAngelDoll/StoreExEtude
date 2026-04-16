@@ -330,6 +330,12 @@
     <string name="select_folder">Select folder</string>
     <string name="enter_ip">Enter IP address</string>
     <string name="enter_port">Enter port number</string>
+    <string name="auto_play_next_material">Execute next material after previous</string>
+    <string name="continue_journal">Continue journal</string>
+    <string name="exit_warning_title">Exit playback?</string>
+    <string name="exit_warning_message">If you exit, the time tracking will be forgotten and you will have to start the material again.</string>
+    <string name="continue_button">Continue</string>
+    <string name="execute_journal">Execute journal</string>
 
     <string name="player_osd">Player OSD</string>
     <string name="show_player_osd">Show OSD</string>

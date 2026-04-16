@@ -38,7 +38,10 @@ data class JournalDetailUiState(
         get() = materials.any { !it.isDownloaded && (it.hasUserSelection || !it.summonPath.isNullOrEmpty() || !it.lyricSummonPath.isNullOrEmpty()) }
 
     val canExecute: Boolean
-        get() = materials.all { it.isDownloaded || !it.hasUserSelection } && materials.any { it.isDownloaded }
+        get() = materials.all { it.isDownloaded || !it.hasUserSelection } && materials.any { it.isDownloaded && !it.isPlayed }
+
+    val hasProgress: Boolean
+        get() = materials.any { it.isPlayed }
 
     val canReset: Boolean
         get() = materials.any { it.isPlayed || !it.hasUserSelection }

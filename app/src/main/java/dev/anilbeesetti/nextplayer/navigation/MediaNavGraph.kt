@@ -34,6 +34,15 @@ fun NavGraphBuilder.mediaNavGraph(
                 }
                 context.startActivity(intent)
             },
+            onPlayJournalVideo = { uri, journalId, materialIndex ->
+                val intent = Intent(context, PlayerActivity::class.java).apply {
+                    action = Intent.ACTION_VIEW
+                    data = uri
+                    putExtra(PlayerApi.API_JOURNAL_ID, journalId)
+                    putExtra(PlayerApi.API_JOURNAL_MATERIAL_INDEX, materialIndex)
+                }
+                context.startActivity(intent)
+            },
             onPlayVideos = { uris ->
                 val intent = Intent(context, PlayerActivity::class.java).apply {
                     action = Intent.ACTION_VIEW

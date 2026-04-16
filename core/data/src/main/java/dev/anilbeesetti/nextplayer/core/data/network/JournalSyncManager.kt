@@ -20,6 +20,10 @@ import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import dev.anilbeesetti.nextplayer.core.common.Logger
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 
 sealed class SyncResult {
     object Success : SyncResult()
@@ -140,21 +144,70 @@ class JournalSyncManager @Inject constructor(
         }
     }
 
+    suspend fun readSyncData(jornadasUri: String): SyncResponse? = withContext(Dispatchers.IO) {
+        try {
+            val treeUri = Uri.parse(jornadasUri)
+            val root = DocumentFile.fromTreeUri(context, treeUri) ?: return@withContext null
+            val file = root.findFile("sync_data.json") ?: return@withContext null
+
+            context.contentResolver.openInputStream(file.uri)?.use { inputStream ->
+                val content = inputStream.bufferedReader().readText()
+                json.decodeFromString<SyncResponse>(content)
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    suspend fun updateMaterialTracking(journalId: String, materialIndex: Int, datetimeRange: String) = withContext(Dispatchers.IO) {
+        val prefs = preferencesRepository.applicationPreferences.first()
+        val jornadasUri = prefs.jornadasUri ?: return@withContext
+
+        val syncData = readSyncData(jornadasUri) ?: return@withContext
+
+        val updatedJournals = syncData.journals.map { journal ->
+            if (journal.id == journalId) {
+                val updatedMateriales = journal.materiales.mapIndexed { index, materialJson ->
+                    if (index == materialIndex) {
+                        val map = materialJson.toMutableMap()
+                        map["datetime_range_utc_06"] = JsonPrimitive(datetimeRange)
+                        JsonObject(map)
+                    } else {
+                        materialJson
+                    }
+                }
+                journal.copy(materiales = updatedMateriales)
+            } else {
+                journal
+            }
+        }
+
+        saveSyncDataToDisk(syncData.copy(journals = updatedJournals), jornadasUri)
+    }
+
     private fun saveSyncDataToDisk(syncData: SyncResponse, jornadasUri: String) {
         try {
             val treeUri = Uri.parse(jornadasUri)
             val root = DocumentFile.fromTreeUri(context, treeUri) ?: return
 
             val filename = "sync_data.json"
-            var file = root.findFile(filename)
-            if (file == null) {
-                file = root.createFile("application/json", filename)
+            val tempFilename = "sync_data.json.tmp"
+
+            // Create or find temp file
+            var tempFile = root.findFile(tempFilename)
+            if (tempFile == null) {
+                tempFile = root.createFile("application/json", tempFilename)
             }
 
-            file?.let {
-                context.contentResolver.openOutputStream(it.uri)?.use { output ->
+            tempFile?.let { tFile ->
+                context.contentResolver.openOutputStream(tFile.uri)?.use { output ->
                     output.write(json.encodeToString(syncData).toByteArray())
                 }
+
+                // Atomic-ish replace: delete original and rename temp
+                val originalFile = root.findFile(filename)
+                originalFile?.delete()
+                tFile.renameTo(filename)
             }
         } catch (e: Exception) {
             e.printStackTrace()

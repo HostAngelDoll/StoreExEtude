@@ -403,9 +403,13 @@ class JournalDetailViewModel @Inject constructor(
         }
     }
 
-    fun executeJournal(onPlay: (Uri) -> Unit) {
-        val firstPlayable = _uiState.value.materials.firstOrNull { it.isDownloaded && !it.path.isNullOrEmpty() && it.uri != null }
-        firstPlayable?.uri?.let { onPlay(it) }
+    fun executeJournal(onPlay: (Uri, String, Int) -> Unit) {
+        val firstPlayable = _uiState.value.materials.firstOrNull { it.isDownloaded && !it.path.isNullOrEmpty() && it.uri != null && !it.isPlayed }
+        firstPlayable?.let { material ->
+            material.uri?.let { uri ->
+                onPlay(uri, journalId, material.index)
+            }
+        }
     }
 
     fun downloadMaterials() {
