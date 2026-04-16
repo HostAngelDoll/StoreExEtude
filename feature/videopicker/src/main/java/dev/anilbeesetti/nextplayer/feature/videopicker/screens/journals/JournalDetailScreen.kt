@@ -319,9 +319,9 @@ fun QuickViewDialog(
             topBar = {
                 NextTopAppBar(
                     title = "",
-                    actions = {
+                    navigationIcon = {
                         IconButton(onClick = onDismiss) {
-                            Icon(NextIcons.Close, contentDescription = null)
+                            Icon(NextIcons.ArrowBack, contentDescription = null)
                         }
                     }
                 )
