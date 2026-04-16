@@ -110,104 +110,106 @@ fun JournalDetailScreen(
     onQuickViewClick: (SummonFile) -> Unit,
     onDismissQuickView: () -> Unit,
 ) {
-    Scaffold(
-        topBar = {
-            NextTopAppBar(
-                title = uiState.name,
-                navigationIcon = {
-                    IconButton(onClick = onNavigateUp) {
-                        Icon(
-                            imageVector = NextIcons.ArrowBack,
-                            contentDescription = stringResource(R.string.navigate_up),
-                        )
-                    }
-                },
-            )
-        },
-    ) { paddingValues ->
-        if (uiState.isLoading) {
-            CenterCircularProgressBar()
-        } else if (uiState.error != null) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(text = uiState.error, color = MaterialTheme.colorScheme.error)
-            }
-        } else {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-            ) {
-                JournalHeaderInfo(uiState)
-
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-                LazyColumn(
-                    modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(bottom = 16.dp)
+    if (uiState.quickViewText != null) {
+        QuickViewDialog(
+            text = uiState.quickViewText,
+            onDismiss = onDismissQuickView
+        )
+    } else {
+        Scaffold(
+            topBar = {
+                NextTopAppBar(
+                    title = uiState.name,
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateUp) {
+                            Icon(
+                                imageVector = NextIcons.ArrowBack,
+                                contentDescription = stringResource(R.string.navigate_up),
+                            )
+                        }
+                    },
+                )
+            },
+        ) { paddingValues ->
+            if (uiState.isLoading) {
+                CenterCircularProgressBar()
+            } else if (uiState.error != null) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(text = uiState.error, color = MaterialTheme.colorScheme.error)
+                }
+            } else {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
                 ) {
-                    items(uiState.materials, key = { it.index }) { material ->
-                        MaterialItem(material)
-                    }
-                }
+                    JournalHeaderInfo(uiState)
 
-                if (uiState.isDownloading || uiState.isVerifying) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+                    LazyColumn(
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(bottom = 16.dp)
                     ) {
-                        Text(
-                            text = if (uiState.isVerifying) "Verificando existencias" else "Progreso jornada",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        LinearProgressIndicator(
-                            progress = { uiState.overallProgress },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = if (uiState.isVerifying) "Verificando: ${uiState.currentFileName ?: "..."}" else "Descargando: ${uiState.currentFileName ?: "..."}",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        LinearProgressIndicator(
-                            progress = { uiState.fileProgress },
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                        items(uiState.materials, key = { it.index }) { material ->
+                            MaterialItem(material)
+                        }
                     }
-                }
 
-                ActionButtons(
-                    isDownloading = uiState.isDownloading || uiState.isVerifying,
-                    canDownload = uiState.canDownload,
-                    canExecute = uiState.canExecute && !uiState.isDownloading,
-                    hasProgress = hasProgress,
-                    canReset = uiState.canReset && !uiState.isDownloading,
-                    canUpload = uiState.canUpload && !uiState.isDownloading,
-                    onDownloadClick = onDownloadClick,
-                    onStopDownloadClick = onStopDownloadClick,
-                    onExecuteClick = onExecuteClick,
-                    onResetClick = onResetClick,
-                    onUploadClick = onUploadClick
+                    if (uiState.isDownloading || uiState.isVerifying) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                        ) {
+                            Text(
+                                text = if (uiState.isVerifying) "Verificando existencias" else "Progreso jornada",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            LinearProgressIndicator(
+                                progress = { uiState.overallProgress },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = if (uiState.isVerifying) "Verificando: ${uiState.currentFileName ?: "..."}" else "Descargando: ${uiState.currentFileName ?: "..."}",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            LinearProgressIndicator(
+                                progress = { uiState.fileProgress },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
+
+                    ActionButtons(
+                        isDownloading = uiState.isDownloading || uiState.isVerifying,
+                        canDownload = uiState.canDownload,
+                        canExecute = uiState.canExecute && !uiState.isDownloading,
+                        hasProgress = hasProgress,
+                        canReset = uiState.canReset && !uiState.isDownloading,
+                        canUpload = uiState.canUpload && !uiState.isDownloading,
+                        onDownloadClick = onDownloadClick,
+                        onStopDownloadClick = onStopDownloadClick,
+                        onExecuteClick = onExecuteClick,
+                        onResetClick = onResetClick,
+                        onUploadClick = onUploadClick
+                    )
+                }
+            }
+
+            if (uiState.showSummonDialog) {
+                SummonDialog(
+                    files = uiState.summonFiles,
+                    onDismiss = onDismissSummonDialog,
+                    onFileClick = onSummonFileClick,
+                    onQuickViewClick = onQuickViewClick
                 )
             }
-        }
-
-        if (uiState.quickViewText != null) {
-            QuickViewDialog(
-                text = uiState.quickViewText,
-                onDismiss = onDismissQuickView
-            )
-        } else if (uiState.showSummonDialog) {
-            SummonDialog(
-                files = uiState.summonFiles,
-                onDismiss = onDismissSummonDialog,
-                onFileClick = onSummonFileClick,
-                onQuickViewClick = onQuickViewClick
-            )
         }
     }
 }
