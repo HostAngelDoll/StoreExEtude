@@ -255,7 +255,7 @@ class JournalDetailViewModel @Inject constructor(
                     }
 
                     val hasUserSelection = !isUserSelectionPlaceholder
-                    val isPlayed = datetimeRange.length > 20 // Full range: YYYY-MM-DD HH:MM:SS-HH:MM:SS
+                    val isPlayed = datetimeRange.contains("-")
                     val isStarted = datetimeRange.isNotEmpty() && !isPlayed
 
                     val fileUri = if (isDownloaded && !path.isNullOrEmpty() && recursosUri != null) {

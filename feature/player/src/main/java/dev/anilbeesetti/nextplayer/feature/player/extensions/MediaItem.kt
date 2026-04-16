@@ -1,6 +1,7 @@
 package dev.anilbeesetti.nextplayer.feature.player.extensions
 
 import android.os.Bundle
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 
@@ -102,9 +103,11 @@ fun MediaItem.copy(
     subtitleDelayMilliseconds: Long? = this.mediaMetadata.subtitleDelayMilliseconds,
     subtitleSpeed: Float? = this.mediaMetadata.subtitleSpeed,
 ): MediaItem = buildUpon().setMediaMetadata(
-    mediaMetadata.buildUpon()
-        .setDurationMs(durationMs)
-        .setExtras(
+    mediaMetadata.buildUpon().apply {
+        if (durationMs != null && durationMs != C.TIME_UNSET && durationMs > 0) {
+            setDurationMs(durationMs)
+        }
+    }.setExtras(
             Bundle(mediaMetadata.extras).setExtras(
                 positionMs = positionMs,
                 videoScale = videoZoom,

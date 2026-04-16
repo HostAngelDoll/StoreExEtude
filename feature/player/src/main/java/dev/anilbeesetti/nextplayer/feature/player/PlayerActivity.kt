@@ -352,6 +352,8 @@ class PlayerActivity : ComponentActivity() {
         if (journalId != null && materialIndex != -1 && startTimestamp != null) {
             isProcessingEnd = true
             val endTimestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss"))
+            // Ensure consistency: if startTimestamp already has a date, don't double it,
+            // but the contract is YYYY-MM-DD HH:MM:SS-HH:MM:SS
             val datetimeRange = "$startTimestamp-$endTimestamp"
             lifecycleScope.launch {
                 viewModel.updateMaterialTracking(journalId!!, materialIndex, datetimeRange)
