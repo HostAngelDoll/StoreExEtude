@@ -225,10 +225,8 @@ class PlayerViewModel @Inject constructor(
         return prefs.jornadasUri?.let { journalSyncManager.readSyncData(it) }
     }
 
-    fun updateMaterialTracking(journalId: String, materialIndex: Int, datetimeRange: String) {
-        viewModelScope.launch {
-            journalSyncManager.updateMaterialTracking(journalId, materialIndex, datetimeRange)
-        }
+    suspend fun updateMaterialTracking(journalId: String, materialIndex: Int, datetimeRange: String) {
+        journalSyncManager.updateMaterialTracking(journalId, materialIndex, datetimeRange)
     }
 }
 

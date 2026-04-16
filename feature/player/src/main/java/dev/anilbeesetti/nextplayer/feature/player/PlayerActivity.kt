@@ -353,11 +353,11 @@ class PlayerActivity : ComponentActivity() {
             isProcessingEnd = true
             val endTimestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss"))
             val datetimeRange = "$startTimestamp-$endTimestamp"
-            viewModel.updateMaterialTracking(journalId!!, materialIndex, datetimeRange)
-            startTimestamp = null
+            lifecycleScope.launch {
+                viewModel.updateMaterialTracking(journalId!!, materialIndex, datetimeRange)
+                startTimestamp = null
 
-            if (viewModel.uiState.value.applicationPreferences?.autoPlayNextMaterial == true) {
-                lifecycleScope.launch {
+                if (viewModel.uiState.value.applicationPreferences?.autoPlayNextMaterial == true) {
                     val syncData = viewModel.getSyncData()
                     val journal = syncData?.journals?.find { it.id == journalId }
                     val nextMaterialIndex = materialIndex + 1
@@ -385,9 +385,9 @@ class PlayerActivity : ComponentActivity() {
                         }
                     }
                     finishAndStopPlayerSession()
+                } else {
+                    finishAndStopPlayerSession()
                 }
-            } else {
-                finishAndStopPlayerSession()
             }
         } else if (startTimestamp == null && !isProcessingEnd) {
             finishAndStopPlayerSession()

@@ -35,6 +35,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Surface
@@ -266,7 +267,7 @@ fun SummonDialog(
             }
         },
         content = {
-            LazyColumn(modifier = Modifier.height(IntrinsicSize.Min).fillMaxWidth()) {
+            LazyColumn(modifier = Modifier.heightIn(max = 400.dp).fillMaxWidth()) {
                 items(files) { file ->
                     ListItem(
                         headlineContent = {
