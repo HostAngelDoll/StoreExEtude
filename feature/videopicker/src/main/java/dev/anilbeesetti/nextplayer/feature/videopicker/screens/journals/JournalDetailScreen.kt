@@ -31,6 +31,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -66,6 +67,11 @@ fun JournalDetailRoute(
     onPlayVideo: (Uri, String, Int) -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    LifecycleStartEffect(Unit) {
+        viewModel.onReturnFromPlayback()
+        onStopOrDispose { }
+    }
 
     LaunchedEffect(uiState.materials) {
         viewModel.checkAutoNext(onPlayVideo)

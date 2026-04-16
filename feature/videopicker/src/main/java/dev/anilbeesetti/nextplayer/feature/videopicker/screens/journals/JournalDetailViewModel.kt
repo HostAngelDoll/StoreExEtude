@@ -13,6 +13,7 @@ import android.content.ServiceConnection
 import android.os.IBinder
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import dev.anilbeesetti.nextplayer.core.common.Logger
 import dev.anilbeesetti.nextplayer.core.common.ThumbnailGenerator
 import dev.anilbeesetti.nextplayer.core.common.extensions.findFileByPath
 import dev.anilbeesetti.nextplayer.core.common.extensions.getOrCreateFileByPath
@@ -62,6 +63,8 @@ class JournalDetailViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(JournalDetailUiState())
     val uiState: StateFlow<JournalDetailUiState> = _uiState.asStateFlow()
+
+    private var hasReturnedFromPlayback = false
 
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -414,6 +417,7 @@ class JournalDetailViewModel @Inject constructor(
         firstPlayable?.let { material ->
             if (material.hasUserSelection) {
                 if (material.isDownloaded && material.uri != null) {
+                    onPlaybackStarted()
                     onPlay(material.uri, journalId, material.index)
                 }
             } else {
@@ -458,6 +462,10 @@ class JournalDetailViewModel @Inject constructor(
     }
 
     fun checkAutoNext(onPlay: (Uri, String, Int) -> Unit) {
+        val state = _uiState.value
+        if (!hasReturnedFromPlayback || state.isLoading) return
+        hasReturnedFromPlayback = false
+
         viewModelScope.launch {
             val prefs = preferencesRepository.applicationPreferences.first()
             if (prefs.autoPlayNextMaterial) {
@@ -471,6 +479,14 @@ class JournalDetailViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    fun onReturnFromPlayback() {
+        loadJournalDetail()
+    }
+
+    fun onPlaybackStarted() {
+        hasReturnedFromPlayback = true
     }
 
     fun selectSummonFile(summonFile: SummonFile, onPlay: (Uri, String, Int) -> Unit) {
@@ -514,6 +530,7 @@ class JournalDetailViewModel @Inject constructor(
             // Start Playback
             val updatedMaterial = _uiState.value.materials.getOrNull(index)
             updatedMaterial?.uri?.let { uri ->
+                onPlaybackStarted()
                 onPlay(uri, journalId, index)
             }
         }
@@ -522,10 +539,61 @@ class JournalDetailViewModel @Inject constructor(
     fun showQuickView(summonFile: SummonFile) {
         viewModelScope.launch {
             val prefs = preferencesRepository.applicationPreferences.first()
-            val recursosUri = prefs.recursosUri ?: return@launch
-            val videoUri = Uri.parse(recursosUri).findFileByPath(context, summonFile.path)?.uri ?: return@launch
+            val recursosUriStr = prefs.recursosUri ?: return@launch
+            val recursosUri = Uri.parse(recursosUriStr)
 
-            val content = dev.anilbeesetti.nextplayer.core.media.TextSidecarResolver.resolve(context, videoUri)
+            // Requirement: If path contains "soundtracks", look for it in "lyrics" folder
+            // e.g. "\2004\01. ___[Futari wa Precure]\01. soundtracks\Beautiful World.mp4"
+            // -> "\2004\01. ___[Futari wa Precure]\01. lyrics\Beautiful World.md"
+            val path = summonFile.path
+            var content: String? = null
+
+            if (path.contains("soundtracks", ignoreCase = true)) {
+                val lastSoundtracksIndex = path.lastIndexOf("soundtracks", ignoreCase = true)
+                val basePart = path.substring(0, lastSoundtracksIndex)
+                val afterPart = path.substring(lastSoundtracksIndex + "soundtracks".length)
+
+                // Reemplazar la carpeta soundtracks por lyrics
+                val lyricsPathBase = basePart + "lyrics" + afterPart
+                // Obtener el directorio de esa nueva ruta
+                val lastSeparatorIndex = lyricsPathBase.lastIndexOfAny(charArrayOf('/', '\\'))
+                val lyricsDir = if (lastSeparatorIndex != -1) lyricsPathBase.substring(0, lastSeparatorIndex) else ""
+
+                val fileName = path.substringAfterLast("/", path.substringAfterLast("\\")).substringBeforeLast(".")
+
+                Logger.logDebug("JournalDetailViewModel", "Searching lyrics for soundtrack in: $lyricsDir (original file: $fileName)")
+
+                val lyricsFolder = recursosUri.findFileByPath(context, lyricsDir)
+                if (lyricsFolder?.isDirectory == true) {
+                    val lyricFile = lyricsFolder.listFiles().find {
+                        it.name?.substringBeforeLast(".")?.equals(fileName, ignoreCase = true) == true &&
+                                (it.name?.lowercase()?.endsWith(".md") == true || it.name?.lowercase()?.endsWith(".txt") == true)
+                    }
+                    if (lyricFile != null) {
+                        Logger.logDebug("JournalDetailViewModel", "Found lyric file: ${lyricFile.name}")
+                        content = withContext(Dispatchers.IO) {
+                            try {
+                                context.contentResolver.openInputStream(lyricFile.uri)?.use { it.bufferedReader().readText() }
+                            } catch (e: Exception) {
+                                null
+                            }
+                        }
+                    } else {
+                        Logger.logDebug("JournalDetailViewModel", "Lyric file not found for $fileName in $lyricsDir")
+                    }
+                } else {
+                    Logger.logDebug("JournalDetailViewModel", "Lyrics directory not found: $lyricsDir")
+                }
+            }
+
+            if (content == null) {
+                Logger.logDebug("JournalDetailViewModel", "Falling back to standard sidecar resolution for $path")
+                val videoUri = recursosUri.findFileByPath(context, path)?.uri
+                if (videoUri != null) {
+                    content = dev.anilbeesetti.nextplayer.core.media.TextSidecarResolver.resolve(context, videoUri)
+                }
+            }
+
             _uiState.update { it.copy(quickViewText = content) }
         }
     }
