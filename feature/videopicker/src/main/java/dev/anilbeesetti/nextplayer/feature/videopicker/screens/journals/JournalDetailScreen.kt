@@ -28,6 +28,7 @@ import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.activity.compose.BackHandler
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -195,19 +196,17 @@ fun JournalDetailScreen(
             }
         }
 
-        if (uiState.showSummonDialog) {
+        if (uiState.quickViewText != null) {
+            QuickViewDialog(
+                text = uiState.quickViewText,
+                onDismiss = onDismissQuickView
+            )
+        } else if (uiState.showSummonDialog) {
             SummonDialog(
                 files = uiState.summonFiles,
                 onDismiss = onDismissSummonDialog,
                 onFileClick = onSummonFileClick,
                 onQuickViewClick = onQuickViewClick
-            )
-        }
-
-        if (uiState.quickViewText != null) {
-            QuickViewDialog(
-                text = uiState.quickViewText,
-                onDismiss = onDismissQuickView
             )
         }
     }
@@ -311,6 +310,7 @@ fun QuickViewDialog(
     text: String,
     onDismiss: () -> Unit,
 ) {
+    BackHandler(onBack = onDismiss)
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background

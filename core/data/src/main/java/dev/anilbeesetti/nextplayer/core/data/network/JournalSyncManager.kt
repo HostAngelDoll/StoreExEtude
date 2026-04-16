@@ -172,7 +172,8 @@ class JournalSyncManager @Inject constructor(
         materialIndex: Int,
         title: String,
         path: String,
-        lyricPath: String?
+        lyricPath: String?,
+        datetimeRange: String? = null
     ) = withContext(Dispatchers.IO) {
         updateMaterial(journalId, materialIndex) { materialJson ->
             val map = materialJson.toMutableMap()
@@ -180,6 +181,9 @@ class JournalSyncManager @Inject constructor(
             map["path"] = JsonPrimitive(path)
             if (lyricPath != null) {
                 map["lyric_path"] = JsonPrimitive(lyricPath)
+            }
+            if (datetimeRange != null) {
+                map["datetime_range_utc_06"] = JsonPrimitive(datetimeRange)
             }
             JsonObject(map)
         }

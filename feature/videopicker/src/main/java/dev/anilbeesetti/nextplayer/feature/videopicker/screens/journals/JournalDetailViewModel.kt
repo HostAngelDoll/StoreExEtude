@@ -44,8 +44,10 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 
 @HiltViewModel
@@ -253,7 +255,8 @@ class JournalDetailViewModel @Inject constructor(
                     }
 
                     val hasUserSelection = !isUserSelectionPlaceholder
-                    val isPlayed = datetimeRange.isNotEmpty()
+                    val isPlayed = datetimeRange.length > 20 // Full range: YYYY-MM-DD HH:MM:SS-HH:MM:SS
+                    val isStarted = datetimeRange.isNotEmpty() && !isPlayed
 
                     val fileUri = if (isDownloaded && !path.isNullOrEmpty() && recursosUri != null) {
                         getFileUri(recursosUri, path)
@@ -279,6 +282,7 @@ class JournalDetailViewModel @Inject constructor(
                         hasSidecar = hasSidecar,
                         hasUserSelection = hasUserSelection,
                         isPlayed = isPlayed,
+                        isStarted = isStarted,
                         uri = fileUri,
                         thumbnailUri = thumbnailUri,
                         missingFilesCount = missingFilesCount
@@ -437,21 +441,19 @@ class JournalDetailViewModel @Inject constructor(
             val folder = treeUri.findFileByPath(context, summonPath)
 
             if (folder?.isDirectory == true) {
-                val files = folder.listFiles()
-                    .filter { it.isFile && isVideo(it.name ?: "") }
-                    .map { file ->
-                        val isWatched = mediumStateDao.get(file.uri.toString())?.let {
-                            // Considering it watched if it has some playback position or last played time
-                            // Native Next Player detection often sets playback_position to total duration or similar
-                            // Here we just check if it exists in media_state for simplicity or we can check position
-                            true
-                        } ?: false
-                        SummonFile(
-                            name = file.name ?: "Unknown",
-                            path = joinPaths(summonPath, file.name ?: ""),
-                            isWatched = isWatched
-                        )
-                    }
+                val files = withContext(Dispatchers.IO) {
+                    folder.listFiles()
+                        .filter { it.isFile && isVideo(it.name ?: "") }
+                        .map { file ->
+                            val isWatched = mediumStateDao.get(file.uri.toString()) != null
+                            SummonFile(
+                                name = file.name ?: "Unknown",
+                                uri = file.uri,
+                                path = joinPaths(summonPath, file.name ?: ""),
+                                isWatched = isWatched
+                            )
+                        }
+                }
                 _uiState.update { it.copy(showSummonDialog = true, summonFiles = files, activeMaterialIndex = index) }
             }
         }
@@ -513,13 +515,17 @@ class JournalDetailViewModel @Inject constructor(
                 }
             }
 
+            // Register start time immediately (requirement d)
+            val startTimestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+
             // Save immediately
             journalSyncManager.updateMaterialSelection(
                 journalId = journalId,
                 materialIndex = index,
                 title = summonFile.name,
                 path = summonFile.path,
-                lyricPath = lyricPath
+                lyricPath = lyricPath,
+                datetimeRange = startTimestamp
             )
 
             // Refresh UI
@@ -527,9 +533,8 @@ class JournalDetailViewModel @Inject constructor(
 
             dismissSummonDialog()
 
-            // Start Playback
-            val updatedMaterial = _uiState.value.materials.getOrNull(index)
-            updatedMaterial?.uri?.let { uri ->
+            // Start Playback - Use the URI from summonFile directly to avoid race conditions
+            summonFile.uri?.let { uri ->
                 onPlaybackStarted()
                 onPlay(uri, journalId, index)
             }

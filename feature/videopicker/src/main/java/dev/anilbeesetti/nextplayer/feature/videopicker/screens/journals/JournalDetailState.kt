@@ -14,6 +14,7 @@ data class MaterialUiModel(
     val hasSidecar: Boolean,
     val hasUserSelection: Boolean,
     val isPlayed: Boolean,
+    val isStarted: Boolean = false,
     val uri: Uri?,
     val thumbnailUri: Uri? = null,
     val missingFilesCount: Int = 0,
@@ -45,7 +46,7 @@ data class JournalDetailUiState(
         get() = materials.all { it.isDownloaded || !it.hasUserSelection } && materials.any { it.isDownloaded && !it.isPlayed }
 
     val hasProgress: Boolean
-        get() = materials.any { it.isPlayed }
+        get() = materials.any { it.isPlayed || it.isStarted }
 
     val canReset: Boolean
         get() = materials.any { it.isPlayed || !it.hasUserSelection }
@@ -56,6 +57,7 @@ data class JournalDetailUiState(
 
 data class SummonFile(
     val name: String,
+    val uri: Uri? = null,
     val path: String,
     val isWatched: Boolean,
     val sidecarText: String? = null,
