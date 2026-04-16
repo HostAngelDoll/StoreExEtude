@@ -235,7 +235,7 @@ class PlayerActivity : ComponentActivity() {
             mediaController?.prepare()
             mediaController?.playWhenReady = viewModel.playWhenReady
             mediaController?.currentMediaItem?.localConfiguration?.uri?.let {
-                viewModel.loadVideoNotes(it, this@PlayerActivity)
+                viewModel.loadVideoNotes(it, this@PlayerActivity, journalId, materialIndex)
             }
             return
         }
@@ -295,7 +295,7 @@ class PlayerActivity : ComponentActivity() {
                 prepare()
 
                 currentMediaItem?.localConfiguration?.uri?.let {
-                    viewModel.loadVideoNotes(it, this@PlayerActivity)
+                    viewModel.loadVideoNotes(it, this@PlayerActivity, journalId, materialIndex)
                 }
             }
         }
@@ -307,7 +307,7 @@ class PlayerActivity : ComponentActivity() {
             val uri = mediaItem?.localConfiguration?.uri
             intent.data = uri
             if (uri != null) {
-                viewModel.loadVideoNotes(uri, this@PlayerActivity)
+                viewModel.loadVideoNotes(uri, this@PlayerActivity, journalId, materialIndex)
             }
 
             if (journalId != null && materialIndex != -1) {
@@ -377,6 +377,10 @@ class PlayerActivity : ComponentActivity() {
                             materialIndex = nextMaterialIndex
                             isProcessingEnd = false
                             playVideo(nextUri)
+                            return@launch
+                        } else if (nextTitle?.equals("[User selection]", ignoreCase = true) == true) {
+                            // User selection material - must return to Detail screen to show Summon Dialog
+                            finishAndStopPlayerSession()
                             return@launch
                         }
                     }

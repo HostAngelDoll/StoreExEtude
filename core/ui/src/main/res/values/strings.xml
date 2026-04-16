@@ -336,6 +336,8 @@
     <string name="exit_warning_message">If you exit, the time tracking will be forgotten and you will have to start the material again.</string>
     <string name="continue_button">Continue</string>
     <string name="execute_journal">Execute journal</string>
+    <string name="select_material">Select material</string>
+    <string name="watched">Watched</string>
 
     <string name="player_osd">Player OSD</string>
     <string name="show_player_osd">Show OSD</string>

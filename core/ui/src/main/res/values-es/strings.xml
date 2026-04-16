@@ -322,4 +322,6 @@
     <string name="exit_warning_message">Si sale, el seguimiento de tiempo se olvidará y tendrá que empezar el material de nuevo.</string>
     <string name="continue_button">Continuar</string>
     <string name="execute_journal">Ejecutar jornada</string>
+    <string name="select_material">Selecciona un material</string>
+    <string name="watched">Visto</string>
 </resources>

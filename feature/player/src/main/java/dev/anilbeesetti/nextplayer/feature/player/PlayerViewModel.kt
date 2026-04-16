@@ -15,8 +15,11 @@ import dev.anilbeesetti.nextplayer.core.model.ApplicationPreferences
 import dev.anilbeesetti.nextplayer.core.model.Video
 import dev.anilbeesetti.nextplayer.core.model.VideoContentScale
 import dev.anilbeesetti.nextplayer.core.common.extensions.round
+import dev.anilbeesetti.nextplayer.core.common.extensions.findFileByPath
 import dev.anilbeesetti.nextplayer.core.data.network.JournalSyncManager
 import dev.anilbeesetti.nextplayer.core.data.network.SyncResponse
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonPrimitive
 import dev.anilbeesetti.nextplayer.feature.player.state.SubtitleOptionsEvent
 import dev.anilbeesetti.nextplayer.feature.player.state.VideoZoomEvent
 import javax.inject.Inject
@@ -66,9 +69,35 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
-    fun loadVideoNotes(uri: Uri, context: android.content.Context) {
+    fun loadVideoNotes(uri: Uri, context: android.content.Context, journalId: String? = null, materialIndex: Int = -1) {
         viewModelScope.launch {
-            val notes = TextSidecarResolver.resolve(context, uri)
+            var notes: String? = null
+            if (journalId != null && materialIndex != -1) {
+                val syncData = getSyncData()
+                val journal = syncData?.journals?.find { it.id == journalId }
+                val material = journal?.materiales?.getOrNull(materialIndex)
+                val lyricPath = material?.get("lyric_path")?.jsonPrimitive?.contentOrNull
+                if (!lyricPath.isNullOrEmpty()) {
+                    val prefs = preferencesRepository.applicationPreferences.value
+                    val recursosUri = prefs.recursosUri
+                    if (recursosUri != null) {
+                        val treeUri = Uri.parse(recursosUri)
+                        val file = treeUri.findFileByPath(context, lyricPath)
+                        if (file?.exists() == true) {
+                            notes = withContext(Dispatchers.IO) {
+                                try {
+                                    context.contentResolver.openInputStream(file.uri)?.use { it.bufferedReader().readText() }
+                                } catch (e: Exception) {
+                                    null
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            if (notes == null) {
+                notes = TextSidecarResolver.resolve(context, uri)
+            }
             internalUiState.update { it.copy(videoNotes = notes) }
         }
     }

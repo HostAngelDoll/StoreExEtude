@@ -33,6 +33,10 @@ data class JournalDetailUiState(
     val fileProgress: Float = 0f,
     val overallProgress: Float = 0f,
     val error: String? = null,
+    val showSummonDialog: Boolean = false,
+    val summonFiles: List<SummonFile> = emptyList(),
+    val activeMaterialIndex: Int = -1,
+    val quickViewText: String? = null,
 ) {
     val canDownload: Boolean
         get() = materials.any { !it.isDownloaded && (it.hasUserSelection || !it.summonPath.isNullOrEmpty() || !it.lyricSummonPath.isNullOrEmpty()) }
@@ -49,3 +53,10 @@ data class JournalDetailUiState(
     val canUpload: Boolean
         get() = materials.all { it.isPlayed && it.hasUserSelection }
 }
+
+data class SummonFile(
+    val name: String,
+    val path: String,
+    val isWatched: Boolean,
+    val sidecarText: String? = null,
+)

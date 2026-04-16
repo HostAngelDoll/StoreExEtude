@@ -16,8 +16,10 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.anilbeesetti.nextplayer.core.common.ThumbnailGenerator
 import dev.anilbeesetti.nextplayer.core.common.extensions.findFileByPath
 import dev.anilbeesetti.nextplayer.core.common.extensions.getOrCreateFileByPath
+import dev.anilbeesetti.nextplayer.core.database.dao.MediumStateDao
 import dev.anilbeesetti.nextplayer.core.data.network.DownloadService
 import dev.anilbeesetti.nextplayer.core.data.network.JournalResponse
+import dev.anilbeesetti.nextplayer.core.data.network.JournalSyncManager
 import dev.anilbeesetti.nextplayer.core.data.network.ServerScanner
 import dev.anilbeesetti.nextplayer.core.data.network.StoreEtudeClient
 import dev.anilbeesetti.nextplayer.core.data.network.SyncResponse
@@ -52,6 +54,8 @@ class JournalDetailViewModel @Inject constructor(
     private val preferencesRepository: PreferencesRepository,
     private val client: StoreEtudeClient,
     private val serverScanner: ServerScanner,
+    private val journalSyncManager: JournalSyncManager,
+    private val mediumStateDao: MediumStateDao,
 ) : ViewModel() {
 
     private val journalId: String = savedStateHandle.get<String>("journalId") ?: ""
@@ -146,7 +150,9 @@ class JournalDetailViewModel @Inject constructor(
 
                 journalResponse.materiales.mapIndexed { index, materialJson ->
                     val titleMaterial = materialJson["title_material"]?.jsonPrimitive?.contentOrNull ?: ""
+                    val isUserSelectionPlaceholder = titleMaterial.equals("[User selection]", ignoreCase = true)
                     val path = materialJson["path"]?.jsonPrimitive?.contentOrNull
+                    val lyricPath = materialJson["lyric_path"]?.jsonPrimitive?.contentOrNull
                     val summonPath = materialJson["summon_path"]?.jsonPrimitive?.contentOrNull
                     val lyricSummonPath = materialJson["lyric_summon_path"]?.jsonPrimitive?.contentOrNull
                     val datetimeRange = materialJson["datetime_range_utc_06"]?.jsonPrimitive?.contentOrNull ?: ""
@@ -163,7 +169,7 @@ class JournalDetailViewModel @Inject constructor(
 
                     var isDownloaded = false
                     var missingFilesCount = 0
-                    val isUnselected = titleMaterial == "[User selection]"
+                    val isUnselected = isUserSelectionPlaceholder
 
                     if (recursosUri != null) {
                         if (!path.isNullOrEmpty()) {
@@ -232,7 +238,7 @@ class JournalDetailViewModel @Inject constructor(
                     }
 
                     val hasSidecar = if (isDownloaded && !path.isNullOrEmpty() && recursosUri != null) {
-                        checkSidecarExists(recursosUri, path)
+                        checkSidecarExists(recursosUri, path) || (!lyricPath.isNullOrEmpty() && checkFileExists(recursosUri, lyricPath))
                     } else {
                         false
                     }
@@ -243,7 +249,7 @@ class JournalDetailViewModel @Inject constructor(
                         null
                     }
 
-                    val hasUserSelection = titleMaterial != "[User selection]"
+                    val hasUserSelection = !isUserSelectionPlaceholder
                     val isPlayed = datetimeRange.isNotEmpty()
 
                     val fileUri = if (isDownloaded && !path.isNullOrEmpty() && recursosUri != null) {
@@ -404,12 +410,128 @@ class JournalDetailViewModel @Inject constructor(
     }
 
     fun executeJournal(onPlay: (Uri, String, Int) -> Unit) {
-        val firstPlayable = _uiState.value.materials.firstOrNull { it.isDownloaded && !it.path.isNullOrEmpty() && it.uri != null && !it.isPlayed }
+        val firstPlayable = _uiState.value.materials.firstOrNull { !it.isPlayed }
         firstPlayable?.let { material ->
-            material.uri?.let { uri ->
-                onPlay(uri, journalId, material.index)
+            if (material.hasUserSelection) {
+                if (material.isDownloaded && material.uri != null) {
+                    onPlay(material.uri, journalId, material.index)
+                }
+            } else {
+                showSummonDialog(material.index)
             }
         }
+    }
+
+    private fun showSummonDialog(index: Int) {
+        viewModelScope.launch {
+            val material = _uiState.value.materials.getOrNull(index) ?: return@launch
+            val summonPath = material.summonPath ?: return@launch
+
+            val prefs = preferencesRepository.applicationPreferences.first()
+            val recursosUri = prefs.recursosUri ?: return@launch
+            val treeUri = Uri.parse(recursosUri)
+            val folder = treeUri.findFileByPath(context, summonPath)
+
+            if (folder?.isDirectory == true) {
+                val files = folder.listFiles()
+                    .filter { it.isFile && isVideo(it.name ?: "") }
+                    .map { file ->
+                        val isWatched = mediumStateDao.get(file.uri.toString())?.let {
+                            // Considering it watched if it has some playback position or last played time
+                            // Native Next Player detection often sets playback_position to total duration or similar
+                            // Here we just check if it exists in media_state for simplicity or we can check position
+                            true
+                        } ?: false
+                        SummonFile(
+                            name = file.name ?: "Unknown",
+                            path = joinPaths(summonPath, file.name ?: ""),
+                            isWatched = isWatched
+                        )
+                    }
+                _uiState.update { it.copy(showSummonDialog = true, summonFiles = files, activeMaterialIndex = index) }
+            }
+        }
+    }
+
+    fun dismissSummonDialog() {
+        _uiState.update { it.copy(showSummonDialog = false, summonFiles = emptyList(), activeMaterialIndex = -1) }
+    }
+
+    fun checkAutoNext(onPlay: (Uri, String, Int) -> Unit) {
+        viewModelScope.launch {
+            val prefs = preferencesRepository.applicationPreferences.first()
+            if (prefs.autoPlayNextMaterial) {
+                val state = _uiState.value
+                if (state.hasProgress) {
+                    val firstUnplayed = state.materials.firstOrNull { !it.isPlayed }
+                    if (firstUnplayed != null && !firstUnplayed.hasUserSelection) {
+                        // It's a [User Selection] material and it's the next one
+                        executeJournal(onPlay)
+                    }
+                }
+            }
+        }
+    }
+
+    fun selectSummonFile(summonFile: SummonFile, onPlay: (Uri, String, Int) -> Unit) {
+        viewModelScope.launch {
+            val index = _uiState.value.activeMaterialIndex
+            val material = _uiState.value.materials.getOrNull(index) ?: return@launch
+
+            val prefs = preferencesRepository.applicationPreferences.first()
+            val recursosUri = prefs.recursosUri ?: return@launch
+
+            // Handle Lyric resolution for SOUNDTRACK
+            var lyricPath: String? = null
+            if (!material.lyricSummonPath.isNullOrEmpty()) {
+                val baseName = summonFile.name.substringBeforeLast(".")
+                val lyricFolder = Uri.parse(recursosUri).findFileByPath(context, material.lyricSummonPath)
+                if (lyricFolder?.isDirectory == true) {
+                    val lyricFile = lyricFolder.listFiles().find {
+                        it.name?.substringBeforeLast(".")?.equals(baseName, ignoreCase = true) == true &&
+                                (it.name?.lowercase()?.endsWith(".txt") == true || it.name?.lowercase()?.endsWith(".md") == true)
+                    }
+                    if (lyricFile != null) {
+                        lyricPath = joinPaths(material.lyricSummonPath, lyricFile.name ?: "")
+                    }
+                }
+            }
+
+            // Save immediately
+            journalSyncManager.updateMaterialSelection(
+                journalId = journalId,
+                materialIndex = index,
+                title = summonFile.name,
+                path = summonFile.path,
+                lyricPath = lyricPath
+            )
+
+            // Refresh UI
+            refreshJournalDetail(isDeepCheck = false)
+
+            dismissSummonDialog()
+
+            // Start Playback
+            val updatedMaterial = _uiState.value.materials.getOrNull(index)
+            updatedMaterial?.uri?.let { uri ->
+                onPlay(uri, journalId, index)
+            }
+        }
+    }
+
+    fun showQuickView(summonFile: SummonFile) {
+        viewModelScope.launch {
+            val prefs = preferencesRepository.applicationPreferences.first()
+            val recursosUri = prefs.recursosUri ?: return@launch
+            val videoUri = Uri.parse(recursosUri).findFileByPath(context, summonFile.path)?.uri ?: return@launch
+
+            val content = dev.anilbeesetti.nextplayer.core.media.TextSidecarResolver.resolve(context, videoUri)
+            _uiState.update { it.copy(quickViewText = content) }
+        }
+    }
+
+    fun dismissQuickView() {
+        _uiState.update { it.copy(quickViewText = null) }
     }
 
     fun downloadMaterials() {

@@ -24,12 +24,20 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Surface
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,6 +52,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.anilbeesetti.nextplayer.core.ui.R
 import dev.anilbeesetti.nextplayer.core.ui.components.NextTopAppBar
+import dev.anilbeesetti.nextplayer.core.ui.components.NextDialog
 import coil3.compose.AsyncImage
 import dev.anilbeesetti.nextplayer.core.ui.designsystem.NextIcons
 import dev.anilbeesetti.nextplayer.feature.videopicker.composables.CenterCircularProgressBar
@@ -57,6 +66,10 @@ fun JournalDetailRoute(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
+    LaunchedEffect(uiState.materials) {
+        viewModel.checkAutoNext(onPlayVideo)
+    }
+
     JournalDetailScreen(
         uiState = uiState,
         onNavigateUp = onNavigateUp,
@@ -65,7 +78,11 @@ fun JournalDetailRoute(
         onResetClick = viewModel::resetJournal,
         onDownloadClick = viewModel::downloadMaterials,
         onStopDownloadClick = viewModel::stopDownloads,
-        onUploadClick = { /* Future implementation */ }
+        onUploadClick = { /* Future implementation */ },
+        onDismissSummonDialog = viewModel::dismissSummonDialog,
+        onSummonFileClick = { viewModel.selectSummonFile(it, onPlayVideo) },
+        onQuickViewClick = viewModel::showQuickView,
+        onDismissQuickView = viewModel::dismissQuickView
     )
 }
 
@@ -80,6 +97,10 @@ fun JournalDetailScreen(
     onDownloadClick: () -> Unit,
     onStopDownloadClick: () -> Unit,
     onUploadClick: () -> Unit,
+    onDismissSummonDialog: () -> Unit,
+    onSummonFileClick: (SummonFile) -> Unit,
+    onQuickViewClick: (SummonFile) -> Unit,
+    onDismissQuickView: () -> Unit,
 ) {
     Scaffold(
         topBar = {
@@ -166,6 +187,22 @@ fun JournalDetailScreen(
                 )
             }
         }
+
+        if (uiState.showSummonDialog) {
+            SummonDialog(
+                files = uiState.summonFiles,
+                onDismiss = onDismissSummonDialog,
+                onFileClick = onSummonFileClick,
+                onQuickViewClick = onQuickViewClick
+            )
+        }
+
+        if (uiState.quickViewText != null) {
+            QuickViewDialog(
+                text = uiState.quickViewText,
+                onDismiss = onDismissQuickView
+            )
+        }
     }
 }
 
@@ -210,6 +247,89 @@ fun JournalHeaderInfo(uiState: JournalDetailUiState) {
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.outline
         )
+    }
+}
+
+@Composable
+fun SummonDialog(
+    files: List<SummonFile>,
+    onDismiss: () -> Unit,
+    onFileClick: (SummonFile) -> Unit,
+    onQuickViewClick: (SummonFile) -> Unit,
+) {
+    NextDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.select_material)) },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(android.R.string.cancel))
+            }
+        },
+        content = {
+            LazyColumn(modifier = Modifier.height(IntrinsicSize.Min).fillMaxWidth()) {
+                items(files) { file ->
+                    ListItem(
+                        headlineContent = {
+                            Text(file.name)
+                        },
+                        supportingContent = {
+                            if (file.isWatched) {
+                                Text(
+                                    text = "✔ " + stringResource(R.string.watched),
+                                    color = Color(0xFF4CAF50),
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                            }
+                        },
+                        trailingContent = {
+                            IconButton(onClick = { onQuickViewClick(file) }) {
+                                Icon(
+                                    imageVector = NextIcons.Description,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.tertiary
+                                )
+                            }
+                        },
+                        modifier = Modifier.clickable { onFileClick(file) }
+                    )
+                }
+            }
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun QuickViewDialog(
+    text: String,
+    onDismiss: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
+    ) {
+        Scaffold(
+            topBar = {
+                NextTopAppBar(
+                    title = "",
+                    actions = {
+                        IconButton(onClick = onDismiss) {
+                            Icon(NextIcons.Close, contentDescription = null)
+                        }
+                    }
+                )
+            }
+        ) { paddingValues ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(16.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                Text(text = text, style = MaterialTheme.typography.bodyMedium)
+            }
+        }
     }
 }
 

@@ -160,6 +160,36 @@ class JournalSyncManager @Inject constructor(
     }
 
     suspend fun updateMaterialTracking(journalId: String, materialIndex: Int, datetimeRange: String) = withContext(Dispatchers.IO) {
+        updateMaterial(journalId, materialIndex) { materialJson ->
+            val map = materialJson.toMutableMap()
+            map["datetime_range_utc_06"] = JsonPrimitive(datetimeRange)
+            JsonObject(map)
+        }
+    }
+
+    suspend fun updateMaterialSelection(
+        journalId: String,
+        materialIndex: Int,
+        title: String,
+        path: String,
+        lyricPath: String?
+    ) = withContext(Dispatchers.IO) {
+        updateMaterial(journalId, materialIndex) { materialJson ->
+            val map = materialJson.toMutableMap()
+            map["title_material"] = JsonPrimitive(title)
+            map["path"] = JsonPrimitive(path)
+            if (lyricPath != null) {
+                map["lyric_path"] = JsonPrimitive(lyricPath)
+            }
+            JsonObject(map)
+        }
+    }
+
+    private suspend fun updateMaterial(
+        journalId: String,
+        materialIndex: Int,
+        transform: (JsonObject) -> JsonObject
+    ) = withContext(Dispatchers.IO) {
         val prefs = preferencesRepository.applicationPreferences.first()
         val jornadasUri = prefs.jornadasUri ?: return@withContext
 
@@ -169,9 +199,7 @@ class JournalSyncManager @Inject constructor(
             if (journal.id == journalId) {
                 val updatedMateriales = journal.materiales.mapIndexed { index, materialJson ->
                     if (index == materialIndex) {
-                        val map = materialJson.toMutableMap()
-                        map["datetime_range_utc_06"] = JsonPrimitive(datetimeRange)
-                        JsonObject(map)
+                        transform(materialJson)
                     } else {
                         materialJson
                     }
