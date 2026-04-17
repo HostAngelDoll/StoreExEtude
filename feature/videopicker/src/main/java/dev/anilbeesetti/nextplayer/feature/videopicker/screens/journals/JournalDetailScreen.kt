@@ -278,15 +278,43 @@ fun SummonDialog(
                 items(files) { file ->
                     ListItem(
                         headlineContent = {
-                            Text(file.name)
+                            Text(
+                                text = file.name,
+                                color = if (file.isWatched) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+                                style = if (file.isWatched) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodyLarge
+                            )
                         },
                         supportingContent = {
                             if (file.isWatched) {
                                 Text(
                                     text = "✔ " + stringResource(R.string.watched),
-                                    color = Color(0xFF4CAF50),
+                                    color = MaterialTheme.colorScheme.primary,
                                     style = MaterialTheme.typography.labelSmall
                                 )
+                            }
+                        },
+                        leadingContent = {
+                            Box(
+                                modifier = Modifier
+                                    .size(width = 80.dp, height = 48.dp)
+                                    .clip(MaterialTheme.shapes.small)
+                                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (file.thumbnailUri != null) {
+                                    AsyncImage(
+                                        model = file.thumbnailUri,
+                                        contentDescription = null,
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                } else {
+                                    Icon(
+                                        imageVector = NextIcons.Video,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                    )
+                                }
                             }
                         },
                         trailingContent = {

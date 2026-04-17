@@ -58,6 +58,7 @@ data class JournalDetailUiState(
 data class SummonFile(
     val name: String,
     val uri: Uri? = null,
+    val thumbnailUri: Uri? = null,
     val path: String,
     val isWatched: Boolean,
     val sidecarText: String? = null,

@@ -31,6 +31,7 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.MimeTypes
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
@@ -290,6 +291,8 @@ class PlayerActivity : ComponentActivity() {
 
         withContext(Dispatchers.Main) {
             mediaController?.run {
+                stop()
+                clearMediaItems()
                 setMediaItems(mediaItems, mediaItemIndexToPlay, playerApi.position?.toLong() ?: C.TIME_UNSET)
                 playWhenReady = viewModel.playWhenReady
                 prepare()
@@ -331,6 +334,14 @@ class PlayerActivity : ComponentActivity() {
                 }
 
                 else -> {}
+            }
+        }
+
+        override fun onPlayerError(error: PlaybackException) {
+            super.onPlayerError(error)
+            if (journalId != null && materialIndex != -1) {
+                // Skip to next material on error
+                onMaterialEnded()
             }
         }
 

@@ -255,7 +255,7 @@ class JournalDetailViewModel @Inject constructor(
                     }
 
                     val hasUserSelection = !isUserSelectionPlaceholder
-                    val isPlayed = datetimeRange.contains("-")
+                    val isPlayed = datetimeRange.count { it == '-' } > 2 // Finished: YYYY-MM-DD HH:MM:SS-HH:MM:SS (3+ hyphens)
                     val isStarted = datetimeRange.isNotEmpty() && !isPlayed
 
                     val fileUri = if (isDownloaded && !path.isNullOrEmpty() && recursosUri != null) {
@@ -446,9 +446,11 @@ class JournalDetailViewModel @Inject constructor(
                         .filter { it.isFile && isVideo(it.name ?: "") }
                         .map { file ->
                             val isWatched = mediumStateDao.get(file.uri.toString()) != null
+                            val thumbnailUri = ThumbnailGenerator.getThumbnail(context, file.uri)
                             SummonFile(
                                 name = file.name ?: "Unknown",
                                 uri = file.uri,
+                                thumbnailUri = thumbnailUri,
                                 path = joinPaths(summonPath, file.name ?: ""),
                                 isWatched = isWatched
                             )
