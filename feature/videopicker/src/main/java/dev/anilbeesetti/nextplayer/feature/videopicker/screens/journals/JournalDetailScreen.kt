@@ -74,10 +74,6 @@ fun JournalDetailRoute(
         onStopOrDispose { }
     }
 
-    LaunchedEffect(uiState.materials) {
-        viewModel.checkAutoNext(onPlayVideo)
-    }
-
     JournalDetailScreen(
         uiState = uiState,
         onNavigateUp = onNavigateUp,

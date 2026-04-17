@@ -465,28 +465,25 @@ class JournalDetailViewModel @Inject constructor(
         _uiState.update { it.copy(showSummonDialog = false, summonFiles = emptyList(), activeMaterialIndex = -1) }
     }
 
-    fun checkAutoNext(onPlay: (Uri, String, Int) -> Unit) {
-        val state = _uiState.value
-        if (!hasReturnedFromPlayback || state.isLoading) return
+    fun onReturnFromPlayback() {
+        val wasPlayback = hasReturnedFromPlayback
         hasReturnedFromPlayback = false
 
         viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            refreshJournalDetail(isDeepCheck = false)
+            _uiState.update { it.copy(isLoading = false) }
+
+            // Check for auto-summon immediately on return
             val prefs = preferencesRepository.applicationPreferences.first()
-            if (prefs.autoPlayNextMaterial) {
+            if (wasPlayback && prefs.autoPlayNextMaterial) {
                 val state = _uiState.value
-                if (state.hasProgress) {
-                    val firstUnplayed = state.materials.firstOrNull { !it.isPlayed }
-                    if (firstUnplayed != null && !firstUnplayed.hasUserSelection) {
-                        // It's a [User Selection] material and it's the next one
-                        executeJournal(onPlay)
-                    }
+                val firstUnplayed = state.materials.firstOrNull { !it.isPlayed }
+                if (firstUnplayed != null && !firstUnplayed.hasUserSelection) {
+                    showSummonDialog(firstUnplayed.index)
                 }
             }
         }
-    }
-
-    fun onReturnFromPlayback() {
-        loadJournalDetail()
     }
 
     fun onPlaybackStarted() {
@@ -520,25 +517,26 @@ class JournalDetailViewModel @Inject constructor(
             // Register start time immediately (requirement d)
             val startTimestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
 
-            // Save immediately
-            journalSyncManager.updateMaterialSelection(
-                journalId = journalId,
-                materialIndex = index,
-                title = summonFile.name,
-                path = summonFile.path,
-                lyricPath = lyricPath,
-                datetimeRange = startTimestamp
-            )
-
-            // Refresh UI
-            refreshJournalDetail(isDeepCheck = false)
-
             dismissSummonDialog()
 
-            // Start Playback - Use the URI from summonFile directly to avoid race conditions
+            // Start Playback IMMEDIATELY - Use the URI from summonFile directly
             summonFile.uri?.let { uri ->
                 onPlaybackStarted()
                 onPlay(uri, journalId, index)
+            }
+
+            // Perform persistence in background
+            viewModelScope.launch(Dispatchers.IO) {
+                journalSyncManager.updateMaterialSelection(
+                    journalId = journalId,
+                    materialIndex = index,
+                    title = summonFile.name,
+                    path = summonFile.path,
+                    lyricPath = lyricPath,
+                    datetimeRange = startTimestamp
+                )
+                // Refresh UI after save
+                refreshJournalDetail(isDeepCheck = false)
             }
         }
     }
