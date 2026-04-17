@@ -21,6 +21,8 @@ import java.time.ZoneOffset
 import dev.anilbeesetti.nextplayer.core.common.Logger
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -52,7 +54,9 @@ class JournalSyncManager @Inject constructor(
         ignoreUnknownKeys = true
     }
 
-    suspend fun sync(): SyncResult {
+    private val fileMutex = Mutex()
+
+    suspend fun sync(): SyncResult = fileMutex.withLock {
         val prefs = preferencesRepository.applicationPreferences.first()
         if (prefs.recursosUri == null || prefs.jornadasUri == null) {
             return SyncResult.SettingsIncomplete
@@ -209,27 +213,29 @@ class JournalSyncManager @Inject constructor(
         materialIndex: Int,
         transform: (JsonObject) -> JsonObject
     ) = withContext(Dispatchers.IO) {
-        val prefs = preferencesRepository.applicationPreferences.first()
-        val jornadasUri = prefs.jornadasUri ?: return@withContext
+        fileMutex.withLock {
+            val prefs = preferencesRepository.applicationPreferences.first()
+            val jornadasUri = prefs.jornadasUri ?: return@withLock
 
-        val syncData = readSyncData(jornadasUri) ?: return@withContext
+            val syncData = readSyncData(jornadasUri) ?: return@withLock
 
-        val updatedJournals = syncData.journals.map { journal ->
-            if (journal.id == journalId) {
-                val updatedMateriales = journal.materiales.mapIndexed { index, materialJson ->
-                    if (index == materialIndex) {
-                        transform(materialJson)
-                    } else {
-                        materialJson
+            val updatedJournals = syncData.journals.map { journal ->
+                if (journal.id == journalId) {
+                    val updatedMateriales = journal.materiales.mapIndexed { index, materialJson ->
+                        if (index == materialIndex) {
+                            transform(materialJson)
+                        } else {
+                            materialJson
+                        }
                     }
+                    journal.copy(materiales = updatedMateriales)
+                } else {
+                    journal
                 }
-                journal.copy(materiales = updatedMateriales)
-            } else {
-                journal
             }
-        }
 
-        saveSyncDataToDisk(syncData.copy(journals = updatedJournals), jornadasUri)
+            saveSyncDataToDisk(syncData.copy(journals = updatedJournals), jornadasUri)
+        }
     }
 
     private fun saveSyncDataToDisk(syncData: SyncResponse, jornadasUri: String) {

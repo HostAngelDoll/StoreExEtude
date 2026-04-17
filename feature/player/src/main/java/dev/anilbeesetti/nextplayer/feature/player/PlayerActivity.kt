@@ -37,6 +37,7 @@ import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
 import dagger.hilt.android.AndroidEntryPoint
+import dev.anilbeesetti.nextplayer.core.common.Logger
 import dev.anilbeesetti.nextplayer.core.common.extensions.getMediaContentUri
 import dev.anilbeesetti.nextplayer.core.ui.theme.NextPlayerTheme
 import dev.anilbeesetti.nextplayer.feature.player.extensions.registerForSuspendActivityResult
@@ -316,6 +317,7 @@ class PlayerActivity : ComponentActivity() {
             if (journalId != null && materialIndex != -1) {
                 val current = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
                 startTimestamp = current
+                Logger.logDebug("PlayerActivity", "Journal session started: $journalId, material $materialIndex at $current")
                 lifecycleScope.launch {
                     viewModel.updateMaterialTracking(journalId!!, materialIndex, "$current-")
                 }
@@ -367,6 +369,7 @@ class PlayerActivity : ComponentActivity() {
         if (journalId != null && materialIndex != -1 && startTimestamp != null) {
             isProcessingEnd = true
             val endTimestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss"))
+            Logger.logDebug("PlayerActivity", "Journal material ended: $journalId, material $materialIndex. Construction: $startTimestamp-$endTimestamp")
             lifecycleScope.launch {
                 viewModel.finalizeMaterialTracking(journalId!!, materialIndex, endTimestamp)
                 startTimestamp = null
