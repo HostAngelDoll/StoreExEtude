@@ -24,6 +24,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 
 sealed class SyncResult {
     object Success : SyncResult()
@@ -164,6 +166,19 @@ class JournalSyncManager @Inject constructor(
             val map = materialJson.toMutableMap()
             map["datetime_range_utc_06"] = JsonPrimitive(datetimeRange)
             JsonObject(map)
+        }
+    }
+
+    suspend fun finalizeMaterialTracking(journalId: String, materialIndex: Int, endTimestamp: String) = withContext(Dispatchers.IO) {
+        updateMaterial(journalId, materialIndex) { materialJson ->
+            val currentRange = materialJson["datetime_range_utc_06"]?.jsonPrimitive?.contentOrNull ?: ""
+            if (currentRange.endsWith("-")) {
+                val map = materialJson.toMutableMap()
+                map["datetime_range_utc_06"] = JsonPrimitive(currentRange + endTimestamp)
+                JsonObject(map)
+            } else {
+                materialJson
+            }
         }
     }
 

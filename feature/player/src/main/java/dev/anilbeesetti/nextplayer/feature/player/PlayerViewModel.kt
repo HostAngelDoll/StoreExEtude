@@ -228,6 +228,10 @@ class PlayerViewModel @Inject constructor(
     suspend fun updateMaterialTracking(journalId: String, materialIndex: Int, datetimeRange: String) {
         journalSyncManager.updateMaterialTracking(journalId, materialIndex, datetimeRange)
     }
+
+    suspend fun finalizeMaterialTracking(journalId: String, materialIndex: Int, endTimestamp: String) {
+        journalSyncManager.finalizeMaterialTracking(journalId, materialIndex, endTimestamp)
+    }
 }
 
 @Stable

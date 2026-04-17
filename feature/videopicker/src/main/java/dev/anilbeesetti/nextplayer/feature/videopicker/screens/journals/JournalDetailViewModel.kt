@@ -255,8 +255,8 @@ class JournalDetailViewModel @Inject constructor(
                     }
 
                     val hasUserSelection = !isUserSelectionPlaceholder
-                    val isPlayed = datetimeRange.count { it == '-' } > 2 // Finished: YYYY-MM-DD HH:MM:SS-HH:MM:SS (3+ hyphens)
-                    val isStarted = datetimeRange.isNotEmpty() && !isPlayed
+                    val isPlayed = datetimeRange.isNotEmpty() && !datetimeRange.endsWith("-")
+                    val isStarted = datetimeRange.endsWith("-")
 
                     val fileUri = if (isDownloaded && !path.isNullOrEmpty() && recursosUri != null) {
                         getFileUri(recursosUri, path)
@@ -514,8 +514,8 @@ class JournalDetailViewModel @Inject constructor(
                 }
             }
 
-            // Register start time immediately (requirement d)
-            val startTimestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+            // Register start time immediately (requirement d) - Add hyphen to indicate session started
+            val startTimestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) + "-"
 
             dismissSummonDialog()
 
