@@ -146,9 +146,15 @@ class PlayerService : MediaSessionService() {
                         oldMediaItem.copy(positionMs = updatedPosition),
                     )
                     serviceScope.launch {
+                        val duration = mediaSession?.player?.duration?.takeIf { it > 0 } ?: 0L
+                        val size = try {
+                            DocumentFile.fromSingleUri(this@PlayerService, oldMediaItem.mediaId.toUri())?.length() ?: 0L
+                        } catch (e: Exception) { 0L }
                         mediaRepository.updateMediumPosition(
                             uri = oldMediaItem.mediaId,
                             position = updatedPosition,
+                            duration = duration,
+                            size = size,
                         )
                     }
                 }
@@ -157,9 +163,14 @@ class PlayerService : MediaSessionService() {
                     serviceScope.launch {
                         val durationMs = oldMediaItem.mediaMetadata.durationMs
                         val isAtEnd = durationMs != null && oldPosition.positionMs >= durationMs - 1000
+                        val size = try {
+                            DocumentFile.fromSingleUri(this@PlayerService, oldMediaItem.mediaId.toUri())?.length() ?: 0L
+                        } catch (e: Exception) { 0L }
                         mediaRepository.updateMediumPosition(
                             uri = oldMediaItem.mediaId,
                             position = if (isAtEnd) C.TIME_UNSET else oldPosition.positionMs,
+                            duration = durationMs ?: 0L,
+                            size = size,
                         )
                     }
                 }
@@ -288,9 +299,15 @@ class PlayerService : MediaSessionService() {
             super.onIsPlayingChanged(isPlaying)
             mediaSession?.run {
                 serviceScope.launch {
+                    val uri = player.currentMediaItem?.mediaId ?: return@launch
+                    val size = try {
+                        DocumentFile.fromSingleUri(this@PlayerService, uri.toUri())?.length() ?: 0L
+                    } catch (e: Exception) { 0L }
                     mediaRepository.updateMediumPosition(
-                        uri = player.currentMediaItem?.mediaId ?: return@launch,
+                        uri = uri,
                         position = player.currentPosition,
+                        duration = player.duration.takeIf { it > 0 } ?: 0L,
+                        size = size,
                     )
                 }
             }
@@ -402,9 +419,14 @@ class PlayerService : MediaSessionService() {
                             it.type == C.TRACK_TYPE_TEXT && it.isSupported
                         }
 
+                        val size = try {
+                            DocumentFile.fromSingleUri(this@PlayerService, currentMediaItem.mediaId.toUri())?.length() ?: 0L
+                        } catch (e: Exception) { 0L }
                         mediaRepository.updateMediumPosition(
                             uri = currentMediaItem.mediaId,
                             position = player.currentPosition,
+                            duration = player.duration.takeIf { it > 0 } ?: 0L,
+                            size = size,
                         )
                         mediaRepository.updateMediumSubtitleTrack(
                             uri = currentMediaItem.mediaId,
@@ -504,9 +526,15 @@ class PlayerService : MediaSessionService() {
                 CustomCommands.STOP_PLAYER_SESSION -> {
                     mediaSession?.run {
                         serviceScope.launch {
+                            val uri = player.currentMediaItem?.mediaId ?: return@launch
+                            val size = try {
+                                DocumentFile.fromSingleUri(this@PlayerService, uri.toUri())?.length() ?: 0L
+                            } catch (e: Exception) { 0L }
                             mediaRepository.updateMediumPosition(
-                                uri = player.currentMediaItem?.mediaId ?: return@launch,
+                                uri = uri,
                                 position = player.currentPosition,
+                                duration = player.duration.takeIf { it > 0 } ?: 0L,
+                                size = size,
                             )
                         }
                     }

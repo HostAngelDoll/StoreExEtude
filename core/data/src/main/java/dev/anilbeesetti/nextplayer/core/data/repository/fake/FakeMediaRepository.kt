@@ -36,7 +36,7 @@ class FakeMediaRepository : MediaRepository {
     override suspend fun updateMediumLastPlayedTime(uri: String, lastPlayedTime: Long) {
     }
 
-    override suspend fun updateMediumPosition(uri: String, position: Long) {
+    override suspend fun updateMediumPosition(uri: String, position: Long, duration: Long, size: Long) {
     }
 
     override suspend fun updateMediumPlaybackSpeed(uri: String, playbackSpeed: Float) {

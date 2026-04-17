@@ -54,12 +54,14 @@ class LocalMediaRepository @Inject constructor(
         )
     }
 
-    override suspend fun updateMediumPosition(uri: String, position: Long) {
+    override suspend fun updateMediumPosition(uri: String, position: Long, duration: Long, size: Long) {
         val stateEntity = mediumStateDao.get(uri) ?: MediumStateEntity(uriString = uri)
         mediumStateDao.upsert(
             mediumState = stateEntity.copy(
                 playbackPosition = position,
                 lastPlayedTime = System.currentTimeMillis(),
+                duration = if (duration > 0) duration else stateEntity.duration,
+                size = if (size > 0) size else stateEntity.size,
             ),
         )
     }

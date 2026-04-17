@@ -24,6 +24,9 @@ interface MediumStateDao {
     @Query("SELECT * FROM media_state")
     fun getAll(): Flow<List<MediumStateEntity>>
 
+    @Query("SELECT * FROM media_state WHERE duration = :duration AND size = :size")
+    suspend fun getByDurationAndSize(duration: Long, size: Long): List<MediumStateEntity>
+
     @Query("DELETE FROM media_state WHERE uri in (:uris)")
     suspend fun delete(uris: List<String>)
 }

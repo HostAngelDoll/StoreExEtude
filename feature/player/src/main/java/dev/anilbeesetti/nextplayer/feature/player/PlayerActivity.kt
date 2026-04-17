@@ -3,6 +3,7 @@ package dev.anilbeesetti.nextplayer.feature.player
 import android.annotation.SuppressLint
 import android.content.ComponentName
 import android.content.Intent
+import android.content.pm.ActivityInfo
 import android.graphics.Color
 import android.net.Uri
 import android.os.Build
@@ -18,6 +19,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts.OpenDocument
 import androidx.activity.viewModels
 import androidx.compose.runtime.CompositionLocalProvider
+import dev.anilbeesetti.nextplayer.core.model.ScreenOrientation
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -77,6 +79,8 @@ class PlayerActivity : ComponentActivity() {
 
     private var journalId: String? = null
     private var materialIndex: Int = -1
+    private var pendingMaterialIndex: Int = -1
+    private var isTrackingFinalized = false
     private var startTimestamp: String? = null
     private var showExitWarning by mutableStateOf(false)
 
@@ -96,6 +100,20 @@ class PlayerActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Apply initial orientation before content is set to avoid visual glitch
+        val screenOrientation = viewModel.uiState.value.playerPreferences?.playerScreenOrientation
+        if (screenOrientation != null && requestedOrientation == ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED) {
+            requestedOrientation = when (screenOrientation) {
+                ScreenOrientation.AUTOMATIC -> ActivityInfo.SCREEN_ORIENTATION_SENSOR
+                ScreenOrientation.LANDSCAPE -> ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                ScreenOrientation.LANDSCAPE_REVERSE -> ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE
+                ScreenOrientation.LANDSCAPE_AUTO -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                ScreenOrientation.PORTRAIT -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+                ScreenOrientation.VIDEO_ORIENTATION -> ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED // Will be set by RotationState after metadata
+            }
+        }
+
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
             navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
@@ -160,8 +178,18 @@ class PlayerActivity : ComponentActivity() {
                             confirmButton = {
                                 TextButton(onClick = {
                                     showExitWarning = false
-                                    startTimestamp = null
-                                    finishAndStopPlayerSession()
+                                    if (journalId != null && materialIndex != -1 && startTimestamp != null && !isTrackingFinalized) {
+                                        val endTimestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss"))
+                                        val capturedJournalId = journalId!!
+                                        val capturedIndex = materialIndex
+                                        isTrackingFinalized = true
+                                        lifecycleScope.launch {
+                                            viewModel.finalizeMaterialTracking(capturedJournalId, capturedIndex, endTimestamp)
+                                            finishAndStopPlayerSession()
+                                        }
+                                    } else {
+                                        finishAndStopPlayerSession()
+                                    }
                                 }) {
                                     Text(stringResource(dev.anilbeesetti.nextplayer.core.ui.R.string.exit))
                                 }
@@ -228,7 +256,12 @@ class PlayerActivity : ComponentActivity() {
     private fun startPlayback() {
         val uri = intent.data ?: return
         journalId = intent.getStringExtra(PlayerApi.API_JOURNAL_ID)
-        materialIndex = intent.getIntExtra(PlayerApi.API_JOURNAL_MATERIAL_INDEX, -1)
+        val initialIndex = intent.getIntExtra(PlayerApi.API_JOURNAL_MATERIAL_INDEX, -1)
+
+        if (journalId != null && initialIndex != -1) {
+            pendingMaterialIndex = initialIndex
+            // materialIndex remains -1 until confirmed READY
+        }
 
         val returningFromBackground = !isIntentNew && mediaController?.currentMediaItem != null
         val isNewUriTheCurrentMediaItem = mediaController?.currentMediaItem?.localConfiguration?.uri.toString() == uri.toString()
@@ -299,7 +332,8 @@ class PlayerActivity : ComponentActivity() {
                 prepare()
 
                 currentMediaItem?.localConfiguration?.uri?.let {
-                    viewModel.loadVideoNotes(it, this@PlayerActivity, journalId, materialIndex)
+                    val indexToUse = if (pendingMaterialIndex != -1) pendingMaterialIndex else materialIndex
+                    viewModel.loadVideoNotes(it, this@PlayerActivity, journalId, indexToUse)
                 }
             }
         }
@@ -311,18 +345,8 @@ class PlayerActivity : ComponentActivity() {
             val uri = mediaItem?.localConfiguration?.uri
             intent.data = uri
             if (uri != null) {
-                viewModel.loadVideoNotes(uri, this@PlayerActivity, journalId, materialIndex)
-            }
-
-            if (journalId != null && materialIndex != -1) {
-                val current = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
-                startTimestamp = current
-                Logger.logDebug("PlayerActivity", "Journal session started: $journalId, material $materialIndex at $current")
-                lifecycleScope.launch {
-                    viewModel.updateMaterialTracking(journalId!!, materialIndex, "$current-")
-                }
-            } else {
-                startTimestamp = null
+                val indexToUse = if (pendingMaterialIndex != -1) pendingMaterialIndex else materialIndex
+                viewModel.loadVideoNotes(uri, this@PlayerActivity, journalId, indexToUse)
             }
         }
 
@@ -334,6 +358,27 @@ class PlayerActivity : ComponentActivity() {
         override fun onPlaybackStateChanged(playbackState: Int) {
             super.onPlaybackStateChanged(playbackState)
             when (playbackState) {
+                Player.STATE_READY -> {
+                    if (pendingMaterialIndex != -1 && journalId != null) {
+                        materialIndex = pendingMaterialIndex
+                        pendingMaterialIndex = -1
+
+                        val current = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+                        startTimestamp = current
+                        isTrackingFinalized = false
+
+                        val capturedJournalId = journalId!!
+                        val capturedIndex = materialIndex
+                        lifecycleScope.launch {
+                            viewModel.updateMaterialTracking(capturedJournalId, capturedIndex, "$current-")
+                        }
+
+                        // Reload notes with confirmed index
+                        mediaController?.currentMediaItem?.localConfiguration?.uri?.let {
+                            viewModel.loadVideoNotes(it, this@PlayerActivity, journalId, materialIndex)
+                        }
+                    }
+                }
                 Player.STATE_ENDED -> {
                     isPlaybackFinished = mediaController?.playbackState == Player.STATE_ENDED
                     onMaterialEnded()
@@ -345,8 +390,7 @@ class PlayerActivity : ComponentActivity() {
 
         override fun onPlayerError(error: PlaybackException) {
             super.onPlayerError(error)
-            if (journalId != null && materialIndex != -1) {
-                // Skip to next material on error
+            if (journalId != null && (materialIndex != -1 || pendingMaterialIndex != -1)) {
                 onMaterialEnded()
             }
         }
@@ -366,47 +410,66 @@ class PlayerActivity : ComponentActivity() {
 
     private fun onMaterialEnded() {
         if (isProcessingEnd) return
-        if (journalId != null && materialIndex != -1 && startTimestamp != null) {
-            isProcessingEnd = true
+        isProcessingEnd = true
+
+        val capturedJournalId = journalId
+        val capturedMaterialIndex = materialIndex
+        val capturedStartTimestamp = startTimestamp
+
+        if (capturedJournalId != null && capturedMaterialIndex != -1 && capturedStartTimestamp != null && !isTrackingFinalized) {
+            isTrackingFinalized = true
             val endTimestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss"))
-            Logger.logDebug("PlayerActivity", "Journal material ended: $journalId, material $materialIndex. Construction: $startTimestamp-$endTimestamp")
+            Logger.logDebug("PlayerActivity", "Journal material ended: $capturedJournalId, material $capturedMaterialIndex. Tracking: $capturedStartTimestamp$endTimestamp")
             lifecycleScope.launch {
-                viewModel.finalizeMaterialTracking(journalId!!, materialIndex, endTimestamp)
+                viewModel.finalizeMaterialTracking(capturedJournalId, capturedMaterialIndex, endTimestamp)
                 startTimestamp = null
+                processNextOrFinish(capturedJournalId, capturedMaterialIndex)
+            }
+        } else {
+            lifecycleScope.launch {
+                processNextOrFinish(capturedJournalId ?: "", capturedMaterialIndex)
+            }
+        }
+    }
 
-                if (viewModel.uiState.value.applicationPreferences?.autoPlayNextMaterial == true) {
-                    val syncData = viewModel.getSyncData()
-                    val journal = syncData?.journals?.find { it.id == journalId }
-                    val nextMaterialIndex = materialIndex + 1
-                    if (journal != null && nextMaterialIndex < journal.materiales.size) {
-                        val nextMaterial = journal.materiales[nextMaterialIndex]
-                        val nextPath = nextMaterial["path"]?.jsonPrimitive?.contentOrNull
-                        val nextTitle = nextMaterial["title_material"]?.jsonPrimitive?.contentOrNull
-                        val nextUri = if (!nextPath.isNullOrEmpty()) {
-                            val recursosUri = viewModel.uiState.value.applicationPreferences?.recursosUri
-                            if (recursosUri != null) {
-                                val treeUri = Uri.parse(recursosUri)
-                                treeUri.findFileByPath(this@PlayerActivity, nextPath)?.uri
-                            } else null
-                        } else null
+    private suspend fun processNextOrFinish(capturedJournalId: String, capturedMaterialIndex: Int) {
+        val shouldAutoPlay = viewModel.uiState.value.applicationPreferences?.autoPlayNextMaterial == true
+        val isError = mediaController?.playerError != null || !isPlaybackFinished
 
-                        if (nextUri != null) {
-                            materialIndex = nextMaterialIndex
-                            isProcessingEnd = false
-                            playVideo(nextUri)
-                            return@launch
-                        } else if (nextTitle?.equals("[User selection]", ignoreCase = true) == true) {
-                            // User selection material - must return to Detail screen to show Summon Dialog
-                            finishAndStopPlayerSession()
-                            return@launch
-                        }
+        if (shouldAutoPlay && !isError && capturedJournalId.isNotEmpty() && capturedMaterialIndex != -1) {
+            val syncData = viewModel.getSyncData()
+            val journal = syncData?.journals?.find { it.id == capturedJournalId }
+            val nextMaterialIndex = capturedMaterialIndex + 1
+
+            if (journal != null && nextMaterialIndex < journal.materiales.size) {
+                val nextMaterial = journal.materiales[nextMaterialIndex]
+                val nextPath = nextMaterial["path"]?.jsonPrimitive?.contentOrNull
+                val nextTitle = nextMaterial["title_material"]?.jsonPrimitive?.contentOrNull
+                val nextUri = if (!nextPath.isNullOrEmpty()) {
+                    val recursosUri = viewModel.uiState.value.applicationPreferences?.recursosUri
+                    if (recursosUri != null) {
+                        val treeUri = Uri.parse(recursosUri)
+                        treeUri.findFileByPath(this@PlayerActivity, nextPath)?.uri
+                    } else null
+                } else null
+
+                if (nextUri != null) {
+                    pendingMaterialIndex = nextMaterialIndex
+                    isProcessingEnd = false
+                    isTrackingFinalized = false
+                    withContext(Dispatchers.Main) {
+                        playVideo(nextUri)
                     }
-                    finishAndStopPlayerSession()
-                } else {
-                    finishAndStopPlayerSession()
+                    return
+                } else if (nextTitle?.equals("[User selection]", ignoreCase = true) == true) {
+                    withContext(Dispatchers.Main) {
+                        finishAndStopPlayerSession()
+                    }
+                    return
                 }
             }
-        } else if (startTimestamp == null && !isProcessingEnd) {
+        }
+        withContext(Dispatchers.Main) {
             finishAndStopPlayerSession()
         }
     }

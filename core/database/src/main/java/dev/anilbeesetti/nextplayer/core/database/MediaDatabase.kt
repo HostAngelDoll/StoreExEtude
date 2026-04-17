@@ -26,7 +26,7 @@ import dev.anilbeesetti.nextplayer.core.database.entities.VideoStreamInfoEntity
         SubtitleStreamInfoEntity::class,
         JournalEntity::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = true,
 )
 abstract class MediaDatabase : RoomDatabase() {
@@ -206,6 +206,13 @@ abstract class MediaDatabase : RoomDatabase() {
                     )
                     """,
                 )
+            }
+        }
+
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `media_state` ADD COLUMN `duration` INTEGER")
+                db.execSQL("ALTER TABLE `media_state` ADD COLUMN `size` INTEGER")
             }
         }
     }

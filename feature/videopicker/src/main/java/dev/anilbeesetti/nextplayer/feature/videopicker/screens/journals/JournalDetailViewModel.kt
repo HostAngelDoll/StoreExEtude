@@ -18,6 +18,7 @@ import dev.anilbeesetti.nextplayer.core.common.ThumbnailGenerator
 import dev.anilbeesetti.nextplayer.core.common.extensions.findFileByPath
 import dev.anilbeesetti.nextplayer.core.common.extensions.getOrCreateFileByPath
 import dev.anilbeesetti.nextplayer.core.database.dao.MediumStateDao
+import dev.anilbeesetti.nextplayer.core.data.repository.MediaRepository
 import dev.anilbeesetti.nextplayer.core.data.network.DownloadService
 import dev.anilbeesetti.nextplayer.core.data.network.JournalResponse
 import dev.anilbeesetti.nextplayer.core.data.network.JournalSyncManager
@@ -59,6 +60,7 @@ class JournalDetailViewModel @Inject constructor(
     private val serverScanner: ServerScanner,
     private val journalSyncManager: JournalSyncManager,
     private val mediumStateDao: MediumStateDao,
+    private val mediaRepository: MediaRepository,
 ) : ViewModel() {
 
     private val journalId: String = savedStateHandle.get<String>("journalId") ?: ""
@@ -445,7 +447,28 @@ class JournalDetailViewModel @Inject constructor(
                     folder.listFiles()
                         .filter { it.isFile && isVideo(it.name ?: "") }
                         .map { file ->
-                            val isWatched = mediumStateDao.get(file.uri.toString()) != null
+                            var isWatched = mediumStateDao.get(file.uri.toString()) != null
+
+                            if (!isWatched) {
+                                // Fallback: check by duration + size for duplicates
+                                val duration = try {
+                                    val retriever = MediaMetadataRetriever()
+                                    try {
+                                        retriever.setDataSource(context, file.uri)
+                                        val time = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
+                                        time?.toLong() ?: 0L
+                                    } finally {
+                                        retriever.release()
+                                    }
+                                } catch (e: Exception) {
+                                    0L
+                                }
+                                val size = file.length()
+                                if (duration > 0 && size > 0) {
+                                    isWatched = mediumStateDao.getByDurationAndSize(duration, size).isNotEmpty()
+                                }
+                            }
+
                             val thumbnailUri = ThumbnailGenerator.getThumbnail(context, file.uri)
                             SummonFile(
                                 name = file.name ?: "Unknown",
@@ -518,6 +541,35 @@ class JournalDetailViewModel @Inject constructor(
             val startTimestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) + "-"
 
             dismissSummonDialog()
+
+            // Get duration and size to update playback history
+            val duration = try {
+                val retriever = MediaMetadataRetriever()
+                try {
+                    retriever.setDataSource(context, summonFile.uri)
+                    val time = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
+                    time?.toLong() ?: 0L
+                } finally {
+                    retriever.release()
+                }
+            } catch (e: Exception) {
+                0L
+            }
+            val size = try {
+                DocumentFile.fromSingleUri(context, summonFile.uri!!)?.length() ?: 0L
+            } catch (e: Exception) {
+                0L
+            }
+
+            // Update playback history with duration and size for duplicate detection
+            viewModelScope.launch {
+                mediaRepository.updateMediumPosition(
+                    uri = summonFile.uri.toString(),
+                    position = 0,
+                    duration = duration,
+                    size = size
+                )
+            }
 
             // Start Playback IMMEDIATELY - Use the URI from summonFile directly
             summonFile.uri?.let { uri ->
