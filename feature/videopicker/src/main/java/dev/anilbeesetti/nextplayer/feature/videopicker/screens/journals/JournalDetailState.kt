@@ -33,6 +33,9 @@ data class JournalDetailUiState(
     val fileProgress: Float = 0f,
     val overallProgress: Float = 0f,
     val error: String? = null,
+    val isUploadingJournal: Boolean = false,
+    val uploadLogs: List<String> = emptyList(),
+    val showUploadDialog: Boolean = false,
 ) {
     val canDownload: Boolean
         get() = materials.any { !it.isDownloaded && (it.hasUserSelection || !it.summonPath.isNullOrEmpty() || !it.lyricSummonPath.isNullOrEmpty()) }

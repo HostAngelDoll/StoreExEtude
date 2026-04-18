@@ -16,6 +16,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -26,8 +30,11 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.ui.Alignment
@@ -65,7 +72,12 @@ fun JournalDetailRoute(
         onResetClick = viewModel::resetJournal,
         onDownloadClick = viewModel::downloadMaterials,
         onStopDownloadClick = viewModel::stopDownloads,
-        onUploadClick = { /* Future implementation */ }
+        onUploadClick = viewModel::uploadJournal,
+        isUploading = uiState.isUploadingJournal,
+        showUploadDialog = uiState.showUploadDialog,
+        uploadLogs = uiState.uploadLogs,
+        onDismissUploadDialog = viewModel::dismissUploadDialog,
+        onCopyLogs = viewModel::copyLogsToClipboard
     )
 }
 
@@ -80,6 +92,11 @@ fun JournalDetailScreen(
     onDownloadClick: () -> Unit,
     onStopDownloadClick: () -> Unit,
     onUploadClick: () -> Unit,
+    isUploading: Boolean,
+    showUploadDialog: Boolean,
+    uploadLogs: List<String>,
+    onDismissUploadDialog: () -> Unit,
+    onCopyLogs: () -> Unit,
 ) {
     Scaffold(
         topBar = {
@@ -157,7 +174,7 @@ fun JournalDetailScreen(
                     canExecute = uiState.canExecute && !uiState.isDownloading,
                     hasProgress = hasProgress,
                     canReset = uiState.canReset && !uiState.isDownloading,
-                    canUpload = uiState.canUpload && !uiState.isDownloading,
+                    canUpload = uiState.canUpload && !uiState.isDownloading && !isUploading,
                     onDownloadClick = onDownloadClick,
                     onStopDownloadClick = onStopDownloadClick,
                     onExecuteClick = onExecuteClick,
@@ -166,6 +183,15 @@ fun JournalDetailScreen(
                 )
             }
         }
+    }
+
+    if (showUploadDialog) {
+        UploadLogsDialog(
+            logs = uploadLogs,
+            isUploading = isUploading,
+            onDismiss = onDismissUploadDialog,
+            onCopyLogs = onCopyLogs
+        )
     }
 }
 
@@ -307,6 +333,66 @@ fun MaterialItem(material: MaterialUiModel) {
                         tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                     )
                 }
+            }
+        }
+    )
+}
+
+@Composable
+fun UploadLogsDialog(
+    logs: List<String>,
+    isUploading: Boolean,
+    onDismiss: () -> Unit,
+    onCopyLogs: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = { if (!isUploading) onDismiss() },
+        title = { Text(text = "Subida de jornada") },
+        text = {
+            val scrollState = rememberScrollState()
+            LaunchedEffect(logs.size) {
+                scrollState.animateScrollTo(scrollState.maxValue)
+            }
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(300.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                shape = MaterialTheme.shapes.small
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(8.dp)
+                        .verticalScroll(scrollState)
+                ) {
+                    logs.forEach { log ->
+                        Text(
+                            text = log,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = when {
+                                log.startsWith("[ERROR]") -> MaterialTheme.colorScheme.error
+                                log.startsWith("[OK]") -> Color(0xFF4CAF50)
+                                else -> MaterialTheme.colorScheme.onSurfaceVariant
+                            }
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onDismiss,
+                enabled = !isUploading
+            ) {
+                Text("Aceptar")
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onCopyLogs
+            ) {
+                Text("Copiar logs")
             }
         }
     )

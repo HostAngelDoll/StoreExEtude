@@ -2,6 +2,8 @@ package dev.anilbeesetti.nextplayer.feature.videopicker.screens.journals
 
 import android.content.Context
 import android.media.MediaMetadataRetriever
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.SavedStateHandle
@@ -23,6 +25,7 @@ import dev.anilbeesetti.nextplayer.core.data.network.StoreEtudeClient
 import dev.anilbeesetti.nextplayer.core.data.network.SyncResponse
 import dev.anilbeesetti.nextplayer.core.data.repository.PreferencesRepository
 import dev.anilbeesetti.nextplayer.feature.videopicker.navigation.JournalDetailRoute
+import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsChannel
 import io.ktor.utils.io.copyAndClose
 import io.ktor.utils.io.jvm.javaio.toInputStream
@@ -486,6 +489,85 @@ class JournalDetailViewModel @Inject constructor(
         verificationJob?.cancel()
         _uiState.update { it.copy(isVerifying = false) }
         DownloadService.stop(context)
+    }
+
+    fun uploadJournal() {
+        viewModelScope.launch {
+            if (_uiState.value.isUploadingJournal) return@launch
+
+            _uiState.update { it.copy(isUploadingJournal = true, showUploadDialog = true, uploadLogs = emptyList()) }
+            val journalId = _uiState.value.journalId
+
+            logUpload("[INFO] Iniciando subida de jornada $journalId")
+
+            try {
+                val prefs = preferencesRepository.applicationPreferences.first()
+                val port = prefs.serverPort
+                var ip = prefs.manualServerIp ?: prefs.lastServerIp
+
+                if (ip == null) {
+                    logUpload("[INFO] Escaneando servidor...")
+                    ip = serverScanner.scan(port)
+                }
+
+                if (ip == null) {
+                    logUpload("[ERROR] Servidor no encontrado")
+                    _uiState.update { it.copy(isUploadingJournal = false) }
+                    return@launch
+                }
+
+                logUpload("[INFO] GET /health")
+                val healthStatus = client.health(ip, port)
+                if (healthStatus != 200) {
+                    logUpload("[ERROR] Health check falló ($healthStatus)")
+                    _uiState.update { it.copy(isUploadingJournal = false) }
+                    return@launch
+                }
+                logUpload("[OK] Health check 200")
+
+                val jornadasUri = prefs.jornadasUri ?: throw Exception("Jornadas URI not configured")
+                val syncData = readSyncData(jornadasUri)
+                val journalResponse = syncData?.journals?.find { it.id == journalId }
+
+                if (journalResponse == null) {
+                    logUpload("[ERROR] Jornada no encontrada en sync_data.json")
+                    _uiState.update { it.copy(isUploadingJournal = false) }
+                    return@launch
+                }
+
+                val materiales = journalResponse.materiales
+                logUpload("[INFO] Preparando materiales (${materiales.size} elementos)")
+                logUpload("[INFO] PUT /journal/$journalId")
+
+                val response: HttpResponse = client.updateJournalMaterials(ip, port, journalId, materiales)
+
+                if (response.status.value == 200) {
+                    logUpload("[OK] Respuesta 200")
+                    logUpload("[OK] Subida completada correctamente")
+                } else {
+                    logUpload("[ERROR] PUT falló (${response.status.value})")
+                }
+            } catch (e: Exception) {
+                logUpload("[ERROR] Error durante la subida: ${e.message}")
+            } finally {
+                _uiState.update { it.copy(isUploadingJournal = false) }
+            }
+        }
+    }
+
+    private fun logUpload(message: String) {
+        _uiState.update { it.copy(uploadLogs = it.uploadLogs + message) }
+    }
+
+    fun dismissUploadDialog() {
+        _uiState.update { it.copy(showUploadDialog = false) }
+    }
+
+    fun copyLogsToClipboard() {
+        val logs = _uiState.value.uploadLogs.joinToString("\n")
+        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val clip = ClipData.newPlainText("Upload Logs", logs)
+        clipboard.setPrimaryClip(clip)
     }
 
     private fun isVideo(path: String): Boolean {

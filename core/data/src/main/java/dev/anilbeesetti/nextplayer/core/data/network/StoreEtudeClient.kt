@@ -9,6 +9,7 @@ import io.ktor.client.plugins.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.plugins.logging.*
 import io.ktor.client.request.*
+import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -21,6 +22,11 @@ data class PingResponse(val name: String, val version: String? = null)
 
 @Serializable
 data class SyncResponse(val journals: List<JournalResponse>)
+
+@Serializable
+data class UpdateJournalRequest(
+    val materiales: List<JsonObject>
+)
 
 @Serializable
 data class DownloadListResponse(
@@ -91,11 +97,35 @@ class StoreEtudeClient @Inject constructor() {
     suspend fun health(ip: String, port: Int): Int {
         val url = "http://$ip:$port/health"
         return try {
-            val response = client.get(url)
+            val response = client.get(url) {
+                timeout {
+                    requestTimeoutMillis = 1500
+                    connectTimeoutMillis = 1500
+                    socketTimeoutMillis = 1500
+                }
+            }
             response.status.value
         } catch (e: Exception) {
             Logger.logError(TAG, "Health check failed for $url: ${e.message}")
             -1
+        }
+    }
+
+    suspend fun updateJournalMaterials(
+        ip: String,
+        port: Int,
+        journalId: String,
+        materiales: List<JsonObject>
+    ): HttpResponse {
+        val url = "http://$ip:$port/journal/$journalId"
+        return client.put(url) {
+            contentType(ContentType.Application.Json)
+            setBody(UpdateJournalRequest(materiales))
+            timeout {
+                requestTimeoutMillis = 1500
+                connectTimeoutMillis = 1500
+                socketTimeoutMillis = 1500
+            }
         }
     }
 
