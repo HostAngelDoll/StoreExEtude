@@ -230,6 +230,12 @@ fun AboutApp(
                     color = MaterialTheme.colorScheme.onSurface,
                 )
 
+                Text(
+                    text = context.packageName,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                )
+
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalAlignment = Alignment.CenterVertically,
