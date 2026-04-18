@@ -147,14 +147,21 @@ class JournalSyncManager @Inject constructor(
     suspend fun readSyncData(jornadasUri: String): SyncResponse? = withContext(Dispatchers.IO) {
         try {
             val treeUri = Uri.parse(jornadasUri)
-            val root = DocumentFile.fromTreeUri(context, treeUri) ?: return@withContext null
-            val file = root.findFile("sync_data.json") ?: return@withContext null
+            val root = DocumentFile.fromTreeUri(context, treeUri) ?: run {
+                Logger.logError(TAG, "Root DocumentFile is null for URI: $jornadasUri")
+                return@withContext null
+            }
+            val file = root.findFile("sync_data.json") ?: run {
+                Logger.logDebug(TAG, "sync_data.json not found in $jornadasUri")
+                return@withContext null
+            }
 
             context.contentResolver.openInputStream(file.uri)?.use { inputStream ->
                 val content = inputStream.bufferedReader().readText()
                 json.decodeFromString<SyncResponse>(content)
             }
         } catch (e: Exception) {
+            Logger.logError(TAG, "Error leyendo sync_data.json: ${e.message}")
             null
         }
     }
