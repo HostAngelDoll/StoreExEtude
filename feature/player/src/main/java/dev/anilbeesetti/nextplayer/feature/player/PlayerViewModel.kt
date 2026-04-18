@@ -17,6 +17,7 @@ import dev.anilbeesetti.nextplayer.core.model.VideoContentScale
 import dev.anilbeesetti.nextplayer.core.common.extensions.round
 import dev.anilbeesetti.nextplayer.core.data.network.JournalSyncManager
 import dev.anilbeesetti.nextplayer.core.data.network.SyncResponse
+import dev.anilbeesetti.nextplayer.core.common.Logger
 import dev.anilbeesetti.nextplayer.feature.player.state.SubtitleOptionsEvent
 import dev.anilbeesetti.nextplayer.feature.player.state.VideoZoomEvent
 import javax.inject.Inject
@@ -193,6 +194,9 @@ class PlayerViewModel @Inject constructor(
 
     suspend fun getSyncData(): SyncResponse? {
         val prefs = preferencesRepository.applicationPreferences.value
+        if (prefs.jornadasUri == null) {
+            Logger.logDebug("PlayerViewModel", "jornadasUri is null in preferences.value")
+        }
         return prefs.jornadasUri?.let { journalSyncManager.readSyncData(it) }
     }
 
