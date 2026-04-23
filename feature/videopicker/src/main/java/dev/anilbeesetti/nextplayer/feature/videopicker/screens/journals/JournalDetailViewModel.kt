@@ -19,10 +19,9 @@ import dev.anilbeesetti.nextplayer.core.common.ThumbnailGenerator
 import dev.anilbeesetti.nextplayer.core.common.extensions.findFileByPath
 import dev.anilbeesetti.nextplayer.core.common.extensions.getOrCreateFileByPath
 import dev.anilbeesetti.nextplayer.core.data.network.DownloadService
-import dev.anilbeesetti.nextplayer.core.data.network.JournalResponse
+import dev.anilbeesetti.nextplayer.core.data.network.JournalSyncManager
 import dev.anilbeesetti.nextplayer.core.data.network.ServerScanner
 import dev.anilbeesetti.nextplayer.core.data.network.StoreEtudeClient
-import dev.anilbeesetti.nextplayer.core.data.network.SyncResponse
 import dev.anilbeesetti.nextplayer.core.data.repository.PreferencesRepository
 import dev.anilbeesetti.nextplayer.feature.videopicker.navigation.JournalDetailRoute
 import io.ktor.client.statement.HttpResponse
@@ -59,6 +58,7 @@ class JournalDetailViewModel @Inject constructor(
     private val preferencesRepository: PreferencesRepository,
     private val client: StoreEtudeClient,
     private val serverScanner: ServerScanner,
+    private val journalSyncManager: JournalSyncManager,
 ) : ViewModel() {
 
     private val journalId: String = savedStateHandle.get<String>("journalId") ?: ""
@@ -151,7 +151,7 @@ class JournalDetailViewModel @Inject constructor(
                 return
             }
 
-            val syncData = readSyncData(jornadasUri)
+            val syncData = journalSyncManager.readSyncData(jornadasUri)
             val journalResponse = syncData?.journals?.find { it.id == journalId }
 
             if (journalResponse == null) {
@@ -317,28 +317,6 @@ class JournalDetailViewModel @Inject constructor(
             }
         } catch (e: Exception) {
             _uiState.update { it.copy(error = e.message) }
-        }
-    }
-
-    private suspend fun readSyncData(jornadasUri: String): SyncResponse? = withContext(Dispatchers.IO) {
-        try {
-            val treeUri = Uri.parse(jornadasUri)
-            val root = DocumentFile.fromTreeUri(context, treeUri) ?: run {
-                dev.anilbeesetti.nextplayer.core.common.Logger.logError("JournalSync", "Root DocumentFile is null for URI: $jornadasUri")
-                return@withContext null
-            }
-            val file = root.findFile("sync_data.json") ?: run {
-                dev.anilbeesetti.nextplayer.core.common.Logger.logDebug("JournalSync", "sync_data.json not found in $jornadasUri")
-                return@withContext null
-            }
-
-            context.contentResolver.openInputStream(file.uri)?.use { inputStream ->
-                val content = inputStream.bufferedReader().readText()
-                json.decodeFromString<SyncResponse>(content)
-            }
-        } catch (e: Exception) {
-            dev.anilbeesetti.nextplayer.core.common.Logger.logError("JournalSync", "Error leyendo sync_data.json: ${e.message}")
-            null
         }
     }
 
@@ -549,7 +527,7 @@ class JournalDetailViewModel @Inject constructor(
                 logUpload("[OK] Health check 200")
 
                 val jornadasUri = prefs.jornadasUri ?: throw Exception("Jornadas URI not configured")
-                val syncData = readSyncData(jornadasUri)
+                val syncData = journalSyncManager.readSyncData(jornadasUri)
                 val journalResponse = syncData?.journals?.find { it.id == journalId }
 
                 if (journalResponse == null) {

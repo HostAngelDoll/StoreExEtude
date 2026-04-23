@@ -317,6 +317,7 @@
     <string name="manage_journals">Manage Journals</string>
     <string name="journals">Journals</string>
     <string name="no_journals_available">No journals available</string>
+    <string name="no_journals_folder_configured">No journals folder configured</string>
     <string name="materials">Materials</string>
     <string name="sync">Sync</string>
     <string name="journals_description">Configure sync with StoreEtude server</string>
