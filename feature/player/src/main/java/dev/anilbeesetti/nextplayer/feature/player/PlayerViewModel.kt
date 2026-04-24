@@ -205,6 +205,12 @@ class PlayerViewModel @Inject constructor(
             journalSyncManager.updateMaterialTracking(journalId, materialIndex, datetimeRange)
         }
     }
+
+    fun updateMaterialSelection(journalId: String, materialIndex: Int, title: String, path: String) {
+        viewModelScope.launch {
+            journalSyncManager.updateMaterialSelection(journalId, materialIndex, title, path)
+        }
+    }
 }
 
 @Stable

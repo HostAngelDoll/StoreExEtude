@@ -152,6 +152,33 @@ class JournalSyncManager @Inject constructor(
         saveSyncDataToDisk(syncData.copy(journals = updatedJournals), jornadasUri)
     }
 
+    suspend fun updateMaterialSelection(journalId: String, materialIndex: Int, title: String, path: String) = withContext(Dispatchers.IO) {
+        val prefs = preferencesRepository.applicationPreferences.first()
+        val jornadasUri = prefs.jornadasUri ?: return@withContext
+
+        val syncData = readSyncData(jornadasUri) ?: return@withContext
+
+        val updatedJournals = syncData.journals.map { journal ->
+            if (journal.id == journalId) {
+                val updatedMateriales = journal.materiales.mapIndexed { index, materialJson ->
+                    if (index == materialIndex) {
+                        val map = materialJson.toMutableMap()
+                        map["title_material"] = JsonPrimitive(title)
+                        map["path"] = JsonPrimitive(path)
+                        JsonObject(map)
+                    } else {
+                        materialJson
+                    }
+                }
+                journal.copy(materiales = updatedMateriales)
+            } else {
+                journal
+            }
+        }
+
+        saveSyncDataToDisk(syncData.copy(journals = updatedJournals), jornadasUri)
+    }
+
     private fun saveSyncDataToDisk(syncData: SyncResponse, jornadasUri: String) {
         try {
             val treeUri = Uri.parse(jornadasUri)

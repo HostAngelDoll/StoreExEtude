@@ -8,8 +8,14 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
@@ -23,6 +29,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.documentfile.provider.DocumentFile
 import androidx.core.util.Consumer
 import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -77,6 +84,10 @@ class PlayerActivity : ComponentActivity() {
     private var materialIndex: Int = -1
     private var startTimestamp: String? = null
     private var showExitWarning by mutableStateOf(false)
+
+    private var showSummonDialog by mutableStateOf(false)
+    private var summonFiles by mutableStateOf<List<DocumentFile>>(emptyList())
+    private var summonMaterialIndex: Int = -1
 
     /**
      * Player
@@ -167,6 +178,55 @@ class PlayerActivity : ComponentActivity() {
                             dismissButton = {
                                 TextButton(onClick = { showExitWarning = false }) {
                                     Text(stringResource(dev.anilbeesetti.nextplayer.core.ui.R.string.continue_button))
+                                }
+                            }
+                        )
+                    }
+
+                    if (showSummonDialog) {
+                        NextDialog(
+                            onDismissRequest = {
+                                showSummonDialog = false
+                                isProcessingEnd = false
+                            },
+                            title = { Text("Seleccionar material") },
+                            content = {
+                                SummonDialogContent(
+                                    summonFiles = summonFiles,
+                                    onFileSelected = { file ->
+                                        lifecycleScope.launch {
+                                            val recursosUri = viewModel.uiState.value.applicationPreferences?.recursosUri
+                                            if (recursosUri != null) {
+                                                val treeUri = Uri.parse(recursosUri)
+                                                val fullPath = file.uri.path ?: ""
+                                                val treePath = treeUri.path ?: ""
+                                                var relativePath = fullPath.removePrefix(treePath).trimStart('/')
+                                                if (relativePath == fullPath) {
+                                                    val syncData = viewModel.getSyncData()
+                                                    val journal = syncData?.journals?.find { it.id == journalId }
+                                                    val material = journal?.materiales?.getOrNull(summonMaterialIndex)
+                                                    val summonPath = material?.get("summon_path")?.jsonPrimitive?.contentOrNull
+                                                    if (summonPath != null) {
+                                                        relativePath = "${summonPath.trimEnd('/')}/${file.name}"
+                                                    }
+                                                }
+
+                                                viewModel.updateMaterialSelection(journalId!!, summonMaterialIndex, file.name ?: "Selección", relativePath)
+                                                materialIndex = summonMaterialIndex
+                                                showSummonDialog = false
+                                                isProcessingEnd = false
+                                                playVideo(file.uri)
+                                            }
+                                        }
+                                    }
+                                )
+                            },
+                            confirmButton = {
+                                TextButton(onClick = {
+                                    showSummonDialog = false
+                                    isProcessingEnd = false
+                                }) {
+                                    Text(stringResource(dev.anilbeesetti.nextplayer.core.ui.R.string.cancel))
                                 }
                             }
                         )
@@ -311,7 +371,9 @@ class PlayerActivity : ComponentActivity() {
             }
 
             if (journalId != null && materialIndex != -1) {
-                startTimestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+                if (startTimestamp == null) {
+                    startTimestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+                }
             } else {
                 startTimestamp = null
             }
@@ -333,16 +395,6 @@ class PlayerActivity : ComponentActivity() {
                 else -> {}
             }
         }
-
-        override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
-            super.onPlayWhenReadyChanged(playWhenReady, reason)
-
-            if (reason == Player.PLAY_WHEN_READY_CHANGE_REASON_END_OF_MEDIA_ITEM) {
-                if (mediaController?.repeatMode != Player.REPEAT_MODE_OFF) return
-                isPlaybackFinished = true
-                onMaterialEnded()
-            }
-        }
     }
 
     private var isProcessingEnd = false
@@ -351,7 +403,8 @@ class PlayerActivity : ComponentActivity() {
         if (isProcessingEnd) return
         if (journalId != null && materialIndex != -1 && startTimestamp != null) {
             isProcessingEnd = true
-            val endTimestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss"))
+            val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+            val endTimestamp = LocalDateTime.now().format(formatter)
             val datetimeRange = "$startTimestamp-$endTimestamp"
             viewModel.updateMaterialTracking(journalId!!, materialIndex, datetimeRange)
             startTimestamp = null
@@ -364,7 +417,13 @@ class PlayerActivity : ComponentActivity() {
                     if (journal != null && nextMaterialIndex < journal.materiales.size) {
                         val nextMaterial = journal.materiales[nextMaterialIndex]
                         val nextPath = nextMaterial["path"]?.jsonPrimitive?.contentOrNull
-                        val nextTitle = nextMaterial["title_material"]?.jsonPrimitive?.contentOrNull
+                        val nextSummonPath = nextMaterial["summon_path"]?.jsonPrimitive?.contentOrNull
+
+                        if (nextPath.isNullOrEmpty() && !nextSummonPath.isNullOrEmpty()) {
+                            showUserSelectionDialog(nextMaterialIndex)
+                            return@launch
+                        }
+
                         val nextUri = if (!nextPath.isNullOrEmpty()) {
                             val recursosUri = viewModel.uiState.value.applicationPreferences?.recursosUri
                             if (recursosUri != null) {
@@ -380,13 +439,63 @@ class PlayerActivity : ComponentActivity() {
                             return@launch
                         }
                     }
-                    finishAndStopPlayerSession()
+                    isProcessingEnd = false
                 }
             } else {
-                finishAndStopPlayerSession()
+                isProcessingEnd = false
             }
         } else if (startTimestamp == null && !isProcessingEnd) {
-            finishAndStopPlayerSession()
+            isProcessingEnd = false
+            // If it was just a regular video without journal tracking, finish it
+            if (journalId == null || materialIndex == -1) {
+                finishAndStopPlayerSession()
+            }
+        }
+    }
+
+    private fun showUserSelectionDialog(index: Int) {
+        lifecycleScope.launch {
+            val syncData = viewModel.getSyncData()
+            val journal = syncData?.journals?.find { it.id == journalId }
+            val material = journal?.materiales?.getOrNull(index)
+            val summonPath = material?.get("summon_path")?.jsonPrimitive?.contentOrNull
+            val recursosUri = viewModel.uiState.value.applicationPreferences?.recursosUri
+
+            if (summonPath != null && recursosUri != null) {
+                val treeUri = Uri.parse(recursosUri)
+                val folder = treeUri.findFileByPath(this@PlayerActivity, summonPath)
+                if (folder != null && folder.isDirectory) {
+                    summonFiles = folder.listFiles().filter { it.isFile && isVideo(it.name ?: "") }
+                    summonMaterialIndex = index
+                    showSummonDialog = true
+                } else {
+                    isProcessingEnd = false
+                }
+            } else {
+                isProcessingEnd = false
+            }
+        }
+    }
+
+    private fun isVideo(name: String): Boolean {
+        val extensions = listOf(".mp4", ".mkv", ".mov", ".webm")
+        return extensions.any { name.lowercase().endsWith(it) }
+    }
+
+    @Composable
+    private fun SummonDialogContent(
+        summonFiles: List<DocumentFile>,
+        onFileSelected: (DocumentFile) -> Unit
+    ) {
+        LazyColumn {
+            items(summonFiles) { file ->
+                ListItem(
+                    modifier = Modifier.clickable {
+                        onFileSelected(file)
+                    },
+                    headlineContent = { Text(file.name ?: "Unknown") }
+                )
+            }
         }
     }
 
