@@ -51,6 +51,24 @@ data class JournalResponse(
     val deleted: Boolean = false
 )
 
+fun JournalResponse.asExternalModel() = dev.anilbeesetti.nextplayer.core.model.Journal(
+    id = id,
+    name = nombre,
+    expectedDate = try {
+        java.time.LocalDate.parse(fecha_esperada).atStartOfDay().toInstant(java.time.ZoneOffset.UTC).toEpochMilli()
+    } catch (e: Exception) {
+        0L
+    },
+    state = estado,
+    materialsCount = materiales.size,
+    updatedAt = try {
+        java.time.OffsetDateTime.parse(updated_at).toInstant().toEpochMilli()
+    } catch (e: Exception) {
+        0L
+    },
+    deleted = deleted
+)
+
 @Singleton
 class StoreEtudeClient @Inject constructor() {
 

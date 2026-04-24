@@ -314,6 +314,7 @@
     <string name="manage_journals">Administrar Jornadas</string>
     <string name="journals">Jornadas</string>
     <string name="no_journals_available">No hay jornadas disponibles</string>
+    <string name="no_journals_folder_configured">No hay carpeta de jornadas configurada</string>
     <string name="materials">Materiales</string>
     <string name="sync">Sincronizar</string>
     <string name="auto_play_next_material">Ejecutar siguiente material tras acabar el anterior</string>

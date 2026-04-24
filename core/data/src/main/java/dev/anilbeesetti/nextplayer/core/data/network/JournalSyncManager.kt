@@ -81,50 +81,6 @@ class JournalSyncManager @Inject constructor(
 
         val syncData = client.sync(ip, port) ?: return SyncResult.Error("Failed to fetch sync data")
 
-        val remoteJournals = syncData.journals.map {
-            Journal(
-                id = it.id,
-                name = it.nombre,
-                expectedDate = try {
-                    LocalDate.parse(it.fecha_esperada).atStartOfDay().toInstant(ZoneOffset.UTC).toEpochMilli()
-                } catch (e: Exception) {
-                    0L
-                },
-                state = it.estado,
-                materialsCount = it.materiales.size,
-                updatedAt = try {
-                    OffsetDateTime.parse(it.updated_at).toInstant().toEpochMilli()
-                } catch (e: Exception) {
-                    0L
-                },
-                deleted = it.deleted
-            )
-        }
-
-        // Merge Strategy
-        val localEntities = journalDao.getActiveJournals().first()
-        val localMap = localEntities.associateBy { it.id }
-
-        val toUpsert = mutableListOf<Journal>()
-        val remoteIds = remoteJournals.map { it.id }.toSet()
-
-        remoteJournals.forEach { remote ->
-            val local = localMap[remote.id]
-            if (local == null || remote.updatedAt > local.updatedAt) {
-                toUpsert.add(remote)
-            }
-        }
-
-        // Remove local journals that are no longer on the server
-        localEntities.forEach { local ->
-            if (!remoteIds.contains(local.id)) {
-                journalDao.deleteById(local.id)
-            }
-        }
-
-        // Upsert new or updated journals
-        journalDao.upsertJournals(toUpsert.map { it.asEntity() })
-
         // Save JSON to jornadasDir
         prefs.jornadasUri?.let { saveSyncDataToDisk(syncData, it) }
 
@@ -164,6 +120,10 @@ class JournalSyncManager @Inject constructor(
             Logger.logError(TAG, "Error leyendo sync_data.json: ${e.message}")
             null
         }
+    }
+
+    suspend fun readJournals(jornadasUri: String): List<Journal> {
+        return readSyncData(jornadasUri)?.journals?.filter { !it.deleted }?.map { it.asExternalModel() } ?: emptyList()
     }
 
     suspend fun updateMaterialTracking(journalId: String, materialIndex: Int, datetimeRange: String) = withContext(Dispatchers.IO) {
